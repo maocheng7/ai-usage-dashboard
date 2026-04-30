@@ -35,6 +35,114 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS budget (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    daily_limit REAL DEFAULT 10.0,
+    monthly_limit REAL DEFAULT 200.0,
+    updated_at TEXT DEFAULT (datetime('now','localtime'))
+  )
+`);
+db.exec(`INSERT OR IGNORE INTO budget (id, daily_limit, monthly_limit) VALUES (1, 10.0, 200.0)`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT DEFAULT (datetime('now','localtime')),
+    level TEXT NOT NULL,
+    type TEXT NOT NULL,
+    provider TEXT,
+    model TEXT,
+    current_value REAL,
+    threshold REAL,
+    message TEXT,
+    acknowledged INTEGER DEFAULT 0
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS alert_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    warn_threshold REAL DEFAULT 80,
+    critical_threshold REAL DEFAULT 90,
+    max_threshold REAL DEFAULT 100,
+    sound_enabled INTEGER DEFAULT 1,
+    check_interval_sec INTEGER DEFAULT 30,
+    updated_at TEXT DEFAULT (datetime('now','localtime'))
+  )
+`);
+db.exec(`INSERT OR IGNORE INTO alert_config (id) VALUES (1)`);
+
+// ─── 告警系统 ───────────────────────────────────────────────────────
+const ALERT_LEVELS = { warn: 'warn', critical: 'critical', max: 'max' };
+const ALERT_COOLDOWN_MS = 300_000;
+let lastAlertFired = {};
+
+function getAlertConfig() {
+  return db.prepare(`SELECT * FROM alert_config WHERE id = 1`).get();
+}
+
+function updateAlertConfig(cfg) {
+  db.prepare(`UPDATE alert_config SET warn_threshold=?, critical_threshold=?, max_threshold=?, sound_enabled=?, check_interval_sec=?, updated_at=datetime('now','localtime') WHERE id=1`)
+    .run(cfg.warn_threshold, cfg.critical_threshold, cfg.max_threshold, cfg.sound_enabled ? 1 : 0, cfg.check_interval_sec);
+}
+
+function insertAlert(alert) {
+  db.prepare(`INSERT INTO alerts (level, type, provider, model, current_value, threshold, message) VALUES (?,?,?,?,?,?,?)`)
+    .run(alert.level, alert.type, alert.provider, alert.model, alert.current_value, alert.threshold, alert.message);
+}
+
+function checkAlerts() {
+  const config = getAlertConfig();
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+
+  const budget = db.prepare(`SELECT * FROM budget WHERE id = 1`).get();
+  const dailySpent = db.prepare(`SELECT COALESCE(SUM(cost),0) as cost FROM requests WHERE date(ts) = ?`).get(today).cost;
+  const monthlySpent = db.prepare(`SELECT COALESCE(SUM(cost),0) as cost FROM requests WHERE date(ts) >= ?`).get(monthStart).cost;
+
+  const checks = [
+    { type: 'daily_budget', current: dailySpent, limit: budget.daily_limit, provider: null, model: null },
+    { type: 'monthly_budget', current: monthlySpent, limit: budget.monthly_limit, provider: null, model: null },
+  ];
+
+  for (const p of PROVIDERS) {
+    for (const m of p.models) {
+      const usage = db.prepare(`SELECT COALESCE(SUM(total_tokens),0) as tok FROM requests WHERE provider=? AND model=? AND date(ts)=?`).get(p.name, m, today).tok;
+      checks.push({ type: 'token_usage', current: usage, limit: 1000000, provider: p.name, model: m });
+    }
+  }
+
+  for (const c of checks) {
+    if (c.limit <= 0) continue;
+    const pct = (c.current / c.limit) * 100;
+    const thresholds = [
+      { level: ALERT_LEVELS.max, threshold: config.max_threshold, pctThreshold: config.max_threshold },
+      { level: ALERT_LEVELS.critical, threshold: config.critical_threshold, pctThreshold: config.critical_threshold },
+      { level: ALERT_LEVELS.warn, threshold: config.warn_threshold, pctThreshold: config.warn_threshold },
+    ];
+
+    for (const t of thresholds) {
+      if (pct >= t.pctThreshold) {
+        const key = `${c.type}_${c.provider || 'all'}_${c.model || 'all'}_${t.level}`;
+        if (lastAlertFired[key] && Date.now() - lastAlertFired[key] < ALERT_COOLDOWN_MS) break;
+        lastAlertFired[key] = Date.now();
+
+        const levelLabel = t.level === ALERT_LEVELS.max ? '🔴 严重' : t.level === ALERT_LEVELS.critical ? '🟠 警告' : '🟡 注意';
+        const typeLabel = c.type === 'daily_budget' ? '每日预算' : c.type === 'monthly_budget' ? '每月预算' : 'Token 用量';
+        const detail = c.provider ? `${c.provider}/${c.model}` : typeLabel;
+        const msg = `${levelLabel}: ${detail} 已使用 ${pct.toFixed(1)}% ($${c.current.toFixed(4)}/$${c.limit.toFixed(2)})`;
+
+        insertAlert({ level: t.level, type: c.type, provider: c.provider, model: c.model, current_value: c.current, threshold: t.threshold, message: msg });
+        break;
+      }
+    }
+  }
+}
+
+setInterval(checkAlerts, 30000);
+
 function insertRequest(info) {
   db.prepare(`
     INSERT INTO requests (request_id, model, stream, source, client_ip, channel, api_key, provider, status,
@@ -66,17 +174,53 @@ const PROVIDERS = [
     models: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed', 'MiniMax-M2.5'],
     status: 'ok', failUntil: 0, lastError: null,
   },
+  {
+    name: 'Alibaba',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    apiKey: process.env.ALIBABA_API_KEY || 'sk-alibaba-key',
+    channel: '阿里云百炼',
+    models: ['qwen-coder-plus', 'qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long', 'qwen3.6-plus'],
+    status: 'ok', failUntil: 0, lastError: null,
+  },
 ];
+
+// 启动告警检查
+checkAlerts();
+setInterval(checkAlerts, 30000);
 
 const FALLBACK_MAP = {
   'mimo-v2.5-pro': 'MiniMax-M2.7',
   'mimo-v2.5': 'MiniMax-M2.7',
   'mimo-v2-pro': 'MiniMax-M2.7',
   'mimo-v2-omni': 'MiniMax-M2.7',
+  'qwen-coder-plus': 'qwen-plus',
+  'qwen-plus': 'qwen-turbo',
+  'qwen-turbo': 'qwen-plus',
+  'qwen-max': 'qwen-plus',
+  'qwen-long': 'qwen-plus',
+  'qwen3.6-plus': 'qwen-plus',
 };
 const COOLDOWN_MS = 60_000;
 
 function pickProvider(model) {
+  // 根据模型名称匹配正确的 provider
+  for (const p of PROVIDERS) {
+    if (p.models.includes(model)) {
+      if (p.status === 'cooling' && Date.now() < p.failUntil) continue;
+      p.status = 'ok';
+      return { provider: p, model };
+    }
+  }
+  // 如果模型不在任何 provider 中，尝试匹配模型前缀
+  for (const p of PROVIDERS) {
+    const matchedModel = p.models.find(m => model.startsWith(m.split('-')[0]));
+    if (matchedModel) {
+      if (p.status === 'cooling' && Date.now() < p.failUntil) continue;
+      p.status = 'ok';
+      return { provider: p, model };
+    }
+  }
+  // 默认使用第一个可用的 provider
   for (const p of PROVIDERS) {
     if (p.status === 'cooling' && Date.now() < p.failUntil) continue;
     p.status = 'ok';
@@ -134,6 +278,14 @@ const PRICING = {
     'MiniMax-M2.7': { input: 2.0, output: 8.0, cached: 0 },
     'MiniMax-M2.7-highspeed': { input: 3.0, output: 12.0, cached: 0 },
     'MiniMax-M2.5': { input: 1.0, output: 4.0, cached: 0 },
+  },
+  'Alibaba': {
+    'qwen-coder-plus': { input: 2.0, output: 8.0, cached: 0 },
+    'qwen-plus': { input: 1.0, output: 4.0, cached: 0 },
+    'qwen-turbo': { input: 0.5, output: 2.0, cached: 0 },
+    'qwen-max': { input: 5.0, output: 20.0, cached: 0 },
+    'qwen-long': { input: 1.0, output: 4.0, cached: 0 },
+    'qwen3.6-plus': { input: 2.0, output: 8.0, cached: 0 },
   },
 };
 
@@ -242,6 +394,13 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         const latency = Date.now() - startTime;
         if (upstream.statusCode === 429 || upstream.statusCode === 401 || upstream.statusCode >= 500) {
           markFailed(provider, `HTTP ${upstream.statusCode}`);
+          const latency = Date.now() - startTime;
+          insertRequest({
+            request_id: requestId, model, stream: false, source: 'API', client_ip: clientIp,
+            channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
+            status: 'failed', input_tokens: 0, output_tokens: 0, total_tokens: 0,
+            cache_read: 0, cache_write: 0, cost: 0, latency_ms: latency, ttft_ms: 0,
+          });
           const fb = FALLBACK_MAP[model] || 'MiniMax-M2.7';
           const { provider: np, model: nm } = pickProvider(fb);
           if (np === provider) { res.writeHead(upstream.statusCode, { 'Content-Type': 'application/json' }); res.end(data); return; }
@@ -269,6 +428,13 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
 
   req.on('error', (e) => {
     markFailed(provider, e.message);
+    const latency = Date.now() - startTime;
+    insertRequest({
+      request_id: requestId, model, stream: false, source: 'API', client_ip: clientIp,
+      channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
+      status: 'error', input_tokens: 0, output_tokens: 0, total_tokens: 0,
+      cache_read: 0, cache_write: 0, cost: 0, latency_ms: latency, ttft_ms: 0,
+    });
     const fb = FALLBACK_MAP[model] || 'MiniMax-M2.7';
     const { provider: np, model: nm } = pickProvider(fb);
     if (np === provider) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: { message: e.message } })); return; }
@@ -308,7 +474,7 @@ function handleStats(res, url) {
   const todaySummary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost FROM requests WHERE date(ts)=?`).all(today)[0];
   const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost FROM requests ${dateFilter} GROUP BY provider`).all(...dateParams);
   const byModel = db.prepare(`SELECT model, provider, COUNT(*) as cnt, SUM(input_tokens) as inp, SUM(output_tokens) as out, SUM(total_tokens) as tok, SUM(cache_read) as cached FROM requests ${dateFilter} GROUP BY model, provider`).all(...dateParams);
-  const recent = db.prepare(`SELECT * FROM requests ${dateFilter} ORDER BY id DESC LIMIT 100`).all(...dateParams);
+  const recent = db.prepare(`SELECT * FROM requests ${dateFilter} ORDER BY id DESC LIMIT 1000000`).all(...dateParams);
   const providers = PROVIDERS.map(p => ({ name: p.name, status: p.status, lastError: p.lastError, models: p.models, channel: p.channel }));
 
   // 按时间统计（补全所有时间点，含模型明细）
@@ -410,6 +576,197 @@ function handleStats(res, url) {
   res.end(JSON.stringify({ providers, summary, todaySummary, byProvider, byModel, recent, dailyStats, range, todayDate: today }));
 }
 
+// ─── Provider 对比接口 ─────────────────────────────────────────────
+function handleCompare(res, url) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const range = url.searchParams.get('range') || 'today';
+
+  let dateFilter = '';
+  let dateParams = [];
+  if (range === 'today') {
+    dateFilter = 'WHERE date(ts) = ?';
+    dateParams = [today];
+  } else if (range === '7days') {
+    dateFilter = "WHERE ts >= datetime('now', '-7 days', 'localtime')";
+  } else if (range === '30days') {
+    dateFilter = "WHERE ts >= datetime('now', '-30 days', 'localtime')";
+  }
+
+  // 各服务商汇总
+  const providerSummary = db.prepare(`
+    SELECT provider,
+      COUNT(*) as cnt,
+      SUM(input_tokens) as inp,
+      SUM(output_tokens) as out,
+      SUM(total_tokens) as tok,
+      SUM(cache_read) as cached,
+      SUM(cost) as cost,
+      AVG(latency_ms) as avg_latency
+    FROM requests ${dateFilter}
+    GROUP BY provider
+  `).all(...dateParams);
+
+  // 各模型汇总（含服务商）
+  const modelSummary = db.prepare(`
+    SELECT model, provider,
+      COUNT(*) as cnt,
+      SUM(total_tokens) as tok,
+      SUM(cost) as cost
+    FROM requests ${dateFilter}
+    GROUP BY model, provider
+  `).all(...dateParams);
+
+  // 按天/小时的趋势数据（每个服务商独立趋势）
+  let trends = [];
+  if (range === 'today') {
+    const hourlyData = db.prepare(`
+      SELECT strftime('%H', ts) as period, provider,
+        COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
+      FROM requests WHERE date(ts) = ?
+      GROUP BY strftime('%H', ts), provider
+    `).all(today);
+    const periodMap = {};
+    hourlyData.forEach(h => {
+      if (!periodMap[h.period]) periodMap[h.period] = {};
+      periodMap[h.period][h.provider] = { cnt: h.cnt, tok: h.tok, cost: h.cost };
+    });
+    for (let i = 0; i < 24; i++) {
+      const h = String(i).padStart(2, '0');
+      trends.push({ period: h + ':00', data: periodMap[h] || {} });
+    }
+  } else if (range === '7days') {
+    const dailyData = db.prepare(`
+      SELECT date(ts) as period, provider,
+        COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
+      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime')
+      GROUP BY date(ts), provider
+    `).all();
+    const periodMap = {};
+    dailyData.forEach(d => {
+      if (!periodMap[d.period]) periodMap[d.period] = {};
+      periodMap[d.period][d.provider] = { cnt: d.cnt, tok: d.tok, cost: d.cost };
+    });
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      trends.push({ period: dateStr.slice(5), data: periodMap[dateStr] || {} });
+    }
+  } else if (range === '30days') {
+    const dailyData = db.prepare(`
+      SELECT date(ts) as period, provider,
+        COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
+      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime')
+      GROUP BY date(ts), provider
+    `).all();
+    const periodMap = {};
+    dailyData.forEach(d => {
+      if (!periodMap[d.period]) periodMap[d.period] = {};
+      periodMap[d.period][d.provider] = { cnt: d.cnt, tok: d.tok, cost: d.cost };
+    });
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      trends.push({ period: dateStr.slice(5), data: periodMap[dateStr] || {} });
+    }
+  }
+
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ providerSummary, modelSummary, trends, range }));
+}
+
+// ─── 预算接口 ───────────────────────────────────────────────────────
+function handleBudget(res, req) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+
+  const budget = db.prepare(`SELECT * FROM budget WHERE id = 1`).get();
+  const dailySpent = db.prepare(`SELECT COALESCE(SUM(cost),0) as cost FROM requests WHERE date(ts) = ?`).get(today).cost;
+  const monthlySpent = db.prepare(`SELECT COALESCE(SUM(cost),0) as cost FROM requests WHERE date(ts) >= ?`).get(monthStart).cost;
+
+  const result = {
+    daily: { limit: budget.daily_limit, spent: dailySpent, remaining: Math.max(0, budget.daily_limit - dailySpent), percent: budget.daily_limit > 0 ? (dailySpent / budget.daily_limit * 100) : 0 },
+    monthly: { limit: budget.monthly_limit, spent: monthlySpent, remaining: Math.max(0, budget.monthly_limit - monthlySpent), percent: budget.monthly_limit > 0 ? (monthlySpent / budget.monthly_limit * 100) : 0 },
+    updated_at: budget.updated_at,
+  };
+
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify(result));
+}
+
+function handleBudgetUpdate(res, body) {
+  try {
+    const data = JSON.parse(body);
+    const daily = parseFloat(data.daily_limit);
+    const monthly = parseFloat(data.monthly_limit);
+    if (isNaN(daily) || isNaN(monthly) || daily < 0 || monthly < 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid budget values' }));
+      return;
+    }
+    db.prepare(`UPDATE budget SET daily_limit = ?, monthly_limit = ?, updated_at = datetime('now','localtime') WHERE id = 1`).run(daily, monthly);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ok: true }));
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// ─── 告警接口 ───────────────────────────────────────────────────────
+function handleAlerts(res, url) {
+  const action = url.searchParams.get('action') || 'list';
+  if (action === 'config') {
+    const config = getAlertConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(config));
+    return;
+  }
+  if (action === 'update') {
+    try {
+      const cfg = {
+        warn_threshold: parseFloat(url.searchParams.get('warn')) || 80,
+        critical_threshold: parseFloat(url.searchParams.get('critical')) || 90,
+        max_threshold: parseFloat(url.searchParams.get('max')) || 100,
+        sound_enabled: url.searchParams.get('sound') === '1' ? 1 : 0,
+        check_interval_sec: parseInt(url.searchParams.get('interval')) || 30,
+      };
+      updateAlertConfig(cfg);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+  if (action === 'ack') {
+    const id = url.searchParams.get('id');
+    if (id) db.prepare(`UPDATE alerts SET acknowledged = 1 WHERE id = ?`).run(parseInt(id));
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (action === 'ack_all') {
+    db.prepare(`UPDATE alerts SET acknowledged = 1 WHERE acknowledged = 0`).run();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  const limit = parseInt(url.searchParams.get('limit')) || 50;
+  const unackOnly = url.searchParams.get('unack') === '1';
+  const query = unackOnly
+    ? `SELECT * FROM alerts WHERE acknowledged = 0 ORDER BY id DESC LIMIT ?`
+    : `SELECT * FROM alerts ORDER BY id DESC LIMIT ?`;
+  const alerts = db.prepare(query).all(limit);
+  const unackCount = db.prepare(`SELECT COUNT(*) as cnt FROM alerts WHERE acknowledged = 0`).get().cnt;
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ alerts, unack_count: unackCount }));
+}
+
 // ─── 监控面板 ───────────────────────────────────────────────────────
 function handleDashboard(res) {
   const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf-8');
@@ -422,6 +779,20 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (url.pathname === '/' || url.pathname === '/dashboard') return handleDashboard(res);
   if (url.pathname === '/api/stats') return handleStats(res, url);
+  if (url.pathname === '/api/budget' && req.method === 'GET') return handleBudget(res, req);
+  if (url.pathname === '/api/budget' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => handleBudgetUpdate(res, body));
+    return;
+  }
+  if (url.pathname === '/api/budget' && req.method === 'OPTIONS') {
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+    res.end();
+    return;
+  }
+  if (url.pathname === '/api/compare') return handleCompare(res, url);
+  if (url.pathname === '/api/alerts') return handleAlerts(res, url);
   if (url.pathname === '/v1/models' || url.pathname === '/models') {
     const all = PROVIDERS.flatMap(p => p.models.map(m => ({ id: m, object: 'model', owned_by: p.name })));
     res.writeHead(200, { 'Content-Type': 'application/json' });

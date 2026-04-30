@@ -79,7 +79,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .section-title{font-size:13px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
 
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow-x:auto;position:relative}
+.table-wrap::before{content:'';position:absolute;top:0;right:0;bottom:0;width:20px;background:linear-gradient(to right,transparent,var(--card));pointer-events:none;z-index:2;opacity:0;transition:opacity 0.3s}
+.table-wrap.scrollable::before{opacity:1}
+.table-wrap.scrolled-end::before{opacity:0}
+.table-wrap.scrolled::after{opacity:0}
 table{width:100%;border-collapse:collapse;min-width:1100px}
 thead{background:var(--bg);position:sticky;top:0;z-index:1}
 th{padding:8px 12px;text-align:left;font-weight:500;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid var(--border)}
@@ -88,6 +92,11 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:#1a1e2e}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .mono{font-family:'SF Mono',Consolas,'Liberation Mono',monospace;font-size:12px}
+
+/* 移动端隐藏次要列 */
+@media(max-width:768px){
+  .hide-mobile{display:none}
+}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
 .badge-ok{background:#22c55e18;color:var(--green)}
@@ -104,15 +113,270 @@ tr:hover td{background:#1a1e2e}
 
 .empty{text-align:center;color:var(--dim);padding:30px;font-size:13px}
 
+.budget-section{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:800px){.budget-section{grid-template-columns:1fr}}
+.budget-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.budget-card .budget-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.budget-card .budget-title{font-size:13px;font-weight:600}
+.budget-card .budget-limit{display:flex;align-items:center;gap:6px}
+.budget-card .budget-limit input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;width:80px;font-size:12px;text-align:right}
+.budget-card .budget-amounts{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px}
+.budget-card .budget-spent{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.budget-card .budget-remaining{color:var(--dim);font-size:12px;margin-bottom:10px}
+.budget-bar{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:6px}
+.budget-bar .budget-fill{height:100%;border-radius:5px;transition:width .5s ease}
+.budget-bar .budget-fill.normal{background:var(--green)}
+.budget-bar .budget-fill.warning{background:var(--yellow)}
+.budget-bar .budget-fill.danger{background:var(--red)}
+.budget-pct{font-size:11px;color:var(--dim);text-align:right}
+.budget-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.budget-actions button{background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .15s}
+.budget-actions button:hover{color:var(--text);border-color:var(--dim)}
+.budget-actions button.save{background:var(--blue);color:white;border-color:var(--blue)}
+
 .alert{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:none;z-index:100;max-width:300px}
 .alert.show{display:block;animation:slideIn .3s ease}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 .alert .alert-title{font-size:13px;font-weight:600;margin-bottom:4px}
 .alert .alert-msg{font-size:12px;color:var(--dim)}
 .alert .alert-close{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px}
+.alert.alert-warn{border-color:var(--yellow);box-shadow:0 0 12px #eab30830}
+.alert.alert-critical{border-color:#f97316;box-shadow:0 0 12px #f9731630}
+.alert.alert-max{border-color:var(--red);box-shadow:0 0 12px #ef444440;animation:slideIn .3s ease,alertPulse 1.5s ease-in-out infinite}
+@keyframes alertPulse{0%,100%{box-shadow:0 0 12px #ef444440}50%{box-shadow:0 0 24px #ef444480}}
 
-@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:600px){.stats-row{grid-template-columns:1fr 1fr}.stat .value{font-size:18px}}
+.alert-badge{position:relative;display:inline-flex;align-items:center;gap:4px}
+.alert-badge .count{position:absolute;top:-6px;right:-8px;background:var(--red);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center}
+.alert-badge.has-alerts{color:var(--yellow)}
+
+.alert-panel{position:fixed;top:0;right:0;width:380px;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:200;transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.alert-panel.open{transform:translateX(0)}
+.alert-panel-header{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.alert-panel-header h3{font-size:14px;font-weight:600}
+.alert-panel-body{flex:1;overflow-y:auto;padding:12px}
+.alert-panel-footer{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}
+.alert-panel-footer button{flex:1;padding:6px;border:1px solid var(--border);background:var(--bg);color:var(--dim);border-radius:4px;cursor:pointer;font-size:11px}
+.alert-panel-footer button:hover{color:var(--text);border-color:var(--dim)}
+
+.alert-item{padding:10px 12px;margin-bottom:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);position:relative;transition:all .2s}
+.alert-item:hover{border-color:var(--dim)}
+.alert-item .alert-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.alert-item .alert-level{font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase}
+.alert-item .alert-level.warn{background:#eab30820;color:var(--yellow)}
+.alert-item .alert-level.critical{background:#f9731620;color:#f97316}
+.alert-item .alert-level.max{background:#ef444420;color:var(--red)}
+.alert-item .alert-time{font-size:10px;color:var(--dim)}
+.alert-item .alert-detail{font-size:12px;color:var(--text);line-height:1.4}
+.alert-item .alert-meta{font-size:10px;color:var(--dim);margin-top:4px}
+.alert-item.acknowledged{opacity:0.5}
+.alert-item .ack-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;opacity:0;transition:opacity .2s}
+.alert-item:hover .ack-btn{opacity:1}
+
+.alert-config-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.alert-config-section .config-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px}
+.alert-config-section .config-item{display:flex;flex-direction:column;gap:4px}
+.alert-config-section .config-item label{font-size:11px;color:var(--dim)}
+.alert-config-section .config-item input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;font-size:12px}
+.alert-config-section .config-item input[type="checkbox"]{width:16px;height:16px;accent-color:var(--blue)}
+.alert-config-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.alert-config-actions button{padding:6px 16px;border:1px solid var(--border);background:var(--bg);color:var(--dim);border-radius:4px;cursor:pointer;font-size:11px}
+.alert-config-actions button.primary{background:var(--blue);color:white;border-color:var(--blue)}
+
+.compare-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.compare-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.compare-title{font-size:13px;font-weight:600;color:var(--dim)}
+.swipe-hint{display:none;text-align:center;padding:8px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--border);margin-bottom:12px;user-select:none;animation:swipeHint 2s ease-in-out infinite;transition:opacity 0.3s ease}
+@keyframes swipeHint{0%,100%{opacity:0.5}50%{opacity:1}}
+@media(max-width:600px){.swipe-hint{display:block}}
+.chart-type-btns{display:flex;gap:4px}
+.chart-type-btns button{background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .15s}
+.chart-type-btns button:hover{color:var(--text);border-color:var(--dim)}
+.chart-type-btns button.active{background:var(--blue);color:white;border-color:var(--blue)}
+
+.compare-body{min-height:280px;position:relative}
+
+.bar-chart{display:flex;gap:24px;align-items:flex-end;justify-content:center;height:240px;padding:0 20px}
+.bar-group{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:200px}
+.bar-group-label{font-size:11px;color:var(--dim);font-weight:600;margin-bottom:4px}
+.bar-group-bars{display:flex;gap:4px;align-items:flex-end;height:200px}
+.bar-column{display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-col-fill{width:36px;border-radius:4px 4px 0 0;transition:height .5s ease;cursor:pointer;position:relative;min-height:2px}
+.bar-col-fill:hover{opacity:0.85}
+.bar-col-fill .bar-tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:4px;font-size:11px;white-space:nowrap;z-index:10;pointer-events:none}
+.bar-col-fill:hover .bar-tip{display:block}
+.bar-col-label{font-size:10px;color:var(--dim);white-space:nowrap}
+.bar-legend{display:flex;gap:16px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.bar-legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--dim)}
+.bar-legend-dot{width:10px;height:10px;border-radius:2px}
+
+.pie-chart-wrap{display:flex;align-items:center;justify-content:center;gap:40px;height:260px;flex-wrap:wrap}
+.pie-svg{width:220px;height:220px}
+.pie-legend{display:flex;flex-direction:column;gap:8px}
+.pie-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;transition:opacity .2s}
+.pie-legend-item:hover{opacity:0.8}
+.pie-legend-color{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.pie-legend-text{display:flex;flex-direction:column}
+.pie-legend-name{font-weight:500}
+.pie-legend-val{font-size:10px;color:var(--dim)}
+
+.line-chart-wrap{position:relative;height:260px;padding:10px 0}
+.line-chart-svg{width:100%;height:100%}
+.line-legend{display:flex;gap:16px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.line-legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--dim)}
+.line-legend-line{width:20px;height:3px;border-radius:2px}
+
+.compare-metric-btns{display:flex;gap:4px;margin-right:12px}
+.compare-metric-btns button{background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;transition:all .15s}
+.compare-metric-btns button:hover{color:var(--text);border-color:var(--dim)}
+.compare-metric-btns button.active{background:var(--cyan);color:white;border-color:var(--cyan)}
+
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}.pie-chart-wrap{flex-direction:column;gap:16px}}
+@media(max-width:600px){
+  .stats-row{grid-template-columns:1fr}
+  .stat .value{font-size:18px}
+  .bar-chart{gap:12px}
+  .header{flex-direction:column;gap:12px;align-items:flex-start}
+  .header-actions{width:100%;justify-content:space-between}
+  .header-actions button{min-height:44px;padding:8px 16px;font-size:14px}
+  .prov-stats{grid-template-columns:repeat(2,1fr)}
+  .prov-card .model-row .bar-wrap{width:60px}
+  .prov-card .model-row .right{min-width:80px;font-size:11px}
+  .date-range{flex-wrap:wrap;gap:8px}
+  .date-range button{min-height:44px;padding:8px 16px;font-size:13px}
+  .chart-container{height:150px}
+  .compare-header{flex-direction:column;align-items:flex-start}
+  .compare-metric-btns{margin-right:0;margin-bottom:8px}
+  .compare-metric-btns button{min-height:44px;padding:8px 16px;font-size:13px}
+  .chart-type-btns button{min-height:44px;padding:8px 16px;font-size:13px}
+  .budget-section{grid-template-columns:1fr}
+  .budget-card .budget-head{flex-direction:column;gap:8px;align-items:flex-start}
+  .budget-card .budget-limit{width:100%}
+  .budget-card .budget-limit input{width:100%;text-align:left}
+  .budget-actions{justify-content:stretch}
+  .budget-actions button{flex:1;min-height:44px}
+  .table-wrap{margin:0 -20px;width:calc(100% + 40px);border-radius:0}
+  .table-wrap::after{content:'← 横向滚动查看更多 →';display:block;text-align:center;padding:8px;font-size:11px;color:var(--dim);background:var(--card);position:sticky;left:0;animation:scrollHint 2s ease-in-out infinite;transition:opacity 0.3s}
+  .table-wrap.scrolled::after{opacity:0}
+  @keyframes scrollHint{0%,100%{opacity:0.5}50%{opacity:1}}
+  .section-head{flex-direction:column;gap:8px;align-items:flex-start}
+  .alert-panel{width:100%}
+  .alert-config-section .config-grid{grid-template-columns:1fr}
+  .bar-group{max-width:none}
+  .bar-col-fill{width:32px}
+  .line-chart-wrap{height:200px}
+  .pie-chart-wrap{flex-direction:column;gap:16px}
+  .pie-svg{width:180px;height:180px}
+}
+@media(max-width:400px){
+  body{padding:12px;font-size:12px}
+  .stat .value{font-size:16px}
+  .prov-card .prov-stats{grid-template-columns:1fr}
+  .prov-card .model-row{flex-direction:column;align-items:flex-start;gap:4px}
+  .prov-card .model-row .right{text-align:left}
+}
+
+/* 移动端菜单样式 */
+.mobile-menu-btn {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mobile-menu-btn:hover {
+  color: var(--text);
+  border-color: var(--dim);
+}
+
+@media(max-width:600px){
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .header-actions {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  
+  .header-actions.mobile-menu-open {
+    display: flex;
+  }
+  
+  .header-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* 触摸友好的交互元素 */
+@media (hover: none) and (pointer: coarse) {
+  .chart-bar .bar {
+    min-width: 24px;
+  }
+  
+  .chart-bar .bar .tooltip {
+    display: block;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .chart-bar .bar:active .tooltip {
+    opacity: 1;
+  }
+  
+  .bar-col-fill {
+    min-width: 36px;
+  }
+  
+  .bar-col-fill .bar-tip {
+    display: block;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .bar-col-fill:active .bar-tip {
+    opacity: 1;
+  }
+  
+  .prov-card .model-row:hover {
+    background: var(--bg);
+  }
+  
+  .prov-card .model-row:active {
+    background: #1e2130;
+  }
+  
+  /* 触摸反馈 */
+  button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  .stat:active {
+    transform: scale(0.99);
+    border-color: var(--blue);
+  }
+  
+  .prov-card:active {
+    transform: scale(0.99);
+    border-color: var(--blue);
+  }
+}
 </style>
 </head>
 <body>
@@ -123,9 +387,42 @@ tr:hover td{background:#1a1e2e}
   <div class="alert-msg" id="alert-msg"></div>
 </div>
 
+<div class="alert-panel" id="alert-panel">
+  <div class="alert-panel-header">
+    <h3>&#128276; <t k="alertHistory">告警历史</t></h3>
+    <button class="alert-close" onclick="toggleAlertPanel()" style="position:static">&times;</button>
+  </div>
+  <div class="alert-panel-body" id="alert-panel-body">
+    <div class="empty" id="alert-empty"><t k="noAlerts">暂无告警</t></div>
+  </div>
+  <div class="alert-panel-footer">
+    <button onclick="ackAllAlerts()"><t k="ackAll">全部已读</t></button>
+    <button onclick="showAlertConfig()"><t k="alertSettings">告警设置</t></button>
+  </div>
+</div>
+
+<div id="alert-config-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0008;z-index:300;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:90vw">
+    <h3 style="font-size:15px;margin-bottom:16px">&#9881; <t k="alertConfig">告警配置</t></h3>
+    <div class="config-grid">
+      <div class="config-item"><label><t k="warnThreshold">黄色警告阈值</t> (%)</label><input type="number" id="cfg-warn" min="1" max="100" value="80"></div>
+      <div class="config-item"><label><t k="criticalThreshold">橙色警告阈值</t> (%)</label><input type="number" id="cfg-critical" min="1" max="100" value="90"></div>
+      <div class="config-item"><label><t k="maxThreshold">红色告警阈值</t> (%)</label><input type="number" id="cfg-max" min="1" max="100" value="100"></div>
+      <div class="config-item"><label><t k="checkInterval">检查间隔</t> (秒)</label><input type="number" id="cfg-interval" min="5" max="3600" value="30"></div>
+      <div class="config-item" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="cfg-sound" checked><label for="cfg-sound"><t k="soundEnabled">声音提示</t></label></div>
+    </div>
+    <div class="alert-config-actions" style="margin-top:20px">
+      <button onclick="closeAlertConfig()"><t k="cancel">取消</t></button>
+      <button class="primary" onclick="saveAlertConfig()"><t k="save">保存</t></button>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <h1><span class="dot"></span> <t k="title">AI 模型监控面板</t></h1>
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="菜单">&#9776;</button>
   <div class="header-actions">
+    <button class="alert-badge" id="alert-bell" onclick="toggleAlertPanel()">&#128276; <span class="count" id="alert-count" style="display:none">0</span></button>
     <button onclick="load()">&#8635; <t k="refresh">刷新</t></button>
     <button id="btn-zh" onclick="setLang('zh')">中文</button>
     <button id="btn-en" onclick="setLang('en')">EN</button>
@@ -133,6 +430,30 @@ tr:hover td{background:#1a1e2e}
 </div>
 
 <div class="stats-row" id="stats-row"></div>
+
+<div class="budget-section" id="budget-section">
+  <div class="budget-card">
+    <div class="budget-head">
+      <div class="budget-title">&#128176; <t k="dailyBudget">每日预算</t></div>
+      <div class="budget-limit"><t k="limit">上限</t> $<input type="number" id="budget-daily-input" step="0.01" min="0" value="10.00"></div>
+    </div>
+    <div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="daily-spent" class="budget-spent">$0.00</span></span></div>
+    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="daily-remaining">$0.00</span></div>
+    <div class="budget-bar"><div class="budget-fill normal" id="daily-bar" style="width:0%"></div></div>
+    <div class="budget-pct" id="daily-pct">0%</div>
+  </div>
+  <div class="budget-card">
+    <div class="budget-head">
+      <div class="budget-title">&#128197; <t k="monthlyBudget">每月预算</t></div>
+      <div class="budget-limit"><t k="limit">上限</t> $<input type="number" id="budget-monthly-input" step="0.01" min="0" value="200.00"></div>
+    </div>
+    <div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="monthly-spent" class="budget-spent">$0.00</span></span></div>
+    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="monthly-remaining">$0.00</span></div>
+    <div class="budget-bar"><div class="budget-fill normal" id="monthly-bar" style="width:0%"></div></div>
+    <div class="budget-pct" id="monthly-pct">0%</div>
+    <div class="budget-actions"><button onclick="saveBudget()"><t k="saveBudget">保存预算</t></button></div>
+  </div>
+</div>
 
 <div class="main-content">
   <div>
@@ -156,6 +477,35 @@ tr:hover td{background:#1a1e2e}
   <div class="provider-cards" id="providers"></div>
 </div>
 
+<div class="compare-section">
+  <div class="compare-header">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="compare-title"><t k="providerCompare">Provider 对比</t></div>
+      <div class="compare-metric-btns">
+        <button onclick="setCompareMetric('tokens')" id="cmp-tokens" class="active"><t k="cmpTokens">词元</t></button>
+        <button onclick="setCompareMetric('requests')" id="cmp-requests"><t k="cmpRequests">请求数</t></button>
+        <button onclick="setCompareMetric('cost')" id="cmp-cost"><t k="cmpCost">费用</t></button>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="date-range" id="compare-range">
+        <button onclick="setCompareRange('today')" id="cmp-range-today" class="active"><t k="today">今天</t></button>
+        <button onclick="setCompareRange('7days')" id="cmp-range-7days"><t k="last7days">近 7 天</t></button>
+        <button onclick="setCompareRange('30days')" id="cmp-range-30days"><t k="last30days">近 30 天</t></button>
+      </div>
+      <div class="chart-type-btns">
+        <button onclick="setChartType('bar')" id="chart-bar" class="active"><t k="chartBar">柱状图</t></button>
+        <button onclick="setChartType('pie')" id="chart-pie"><t k="chartPie">饼图</t></button>
+        <button onclick="setChartType('line')" id="chart-line"><t k="chartLine">线图</t></button>
+      </div>
+    </div>
+  </div>
+  <div class="swipe-hint" id="swipe-hint">
+    <span>&#8592; 左右滑动切换图表 &#8594;</span>
+  </div>
+  <div class="compare-body" id="compare-body"></div>
+</div>
+
 <div class="section">
   <div class="section-head">
     <div class="section-title"><t k="requestLog">请求日志</t></div>
@@ -167,34 +517,34 @@ tr:hover td{background:#1a1e2e}
         <col style="width:40px">
         <col style="width:140px">
         <col style="width:160px">
-        <col style="width:50px">
-        <col style="width:60px">
-        <col style="width:110px">
-        <col style="width:100px">
+        <col style="width:50px" class="hide-mobile">
+        <col style="width:60px" class="hide-mobile">
+        <col style="width:110px" class="hide-mobile">
+        <col style="width:100px" class="hide-mobile">
         <col style="width:80px">
         <col style="width:65px">
         <col style="width:120px">
-        <col style="width:90px">
+        <col style="width:90px" class="hide-mobile">
         <col style="width:70px">
         <col style="width:70px">
-        <col style="width:160px">
+        <col style="width:160px" class="hide-mobile">
       </colgroup>
       <thead>
         <tr>
           <th>#</th>
           <th><t k="thReqId">ID</t></th>
           <th><t k="thModel">模型ID</t></th>
-          <th><t k="thStream">流式</t></th>
-          <th><t k="thSource">来源</t></th>
-          <th><t k="thClientIp">客户端IP</t></th>
-          <th><t k="thChannel">渠道</t></th>
+          <th class="hide-mobile"><t k="thStream">流式</t></th>
+          <th class="hide-mobile"><t k="thSource">来源</t></th>
+          <th class="hide-mobile"><t k="thClientIp">客户端IP</t></th>
+          <th class="hide-mobile"><t k="thChannel">渠道</t></th>
           <th><t k="thProvider">服务商</t></th>
           <th><t k="thStatus">状态</t></th>
           <th><t k="thTokens">词元</t></th>
-          <th><t k="thCacheRead">读缓存</t></th>
+          <th class="hide-mobile"><t k="thCacheRead">读缓存</t></th>
           <th><t k="thCost">成本</t></th>
           <th><t k="thLatency">耗时</t></th>
-          <th><t k="thTime">创建时间</t></th>
+          <th class="hide-mobile"><t k="thTime">创建时间</t></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -213,9 +563,22 @@ const I18N={
     online:'在线',cooling:'冷却中',cached:'缓存',noReqs:'暂无请求',
     stream:'流式',nonStream:'非流式',ok:'已完成',fail:'失败',
     input:'输入',output:'输出',total:'总计',cacheHit:'命中',
-    totalCost:'总成本',reqPerMin:'请求/分钟',lastError:'最后错误',
+    totalCost:'总成本',alibabaChannel:'阿里云百炼',reqPerMin:'请求/分钟',lastError:'最后错误',
     tokenUsed:'已使用',tokenLimit:'上限',usage:'使用率',
-    alertTitle:'告警',quotaWarning:'Token 用量已达 80%'
+    alertTitle:'告警',quotaWarning:'Token 用量已达 80%',
+    dailyBudget:'每日预算',monthlyBudget:'每月预算',limit:'上限',
+    spent:'已花费',remaining:'剩余',saveBudget:'保存预算',
+    budgetSaved:'预算已保存',budgetWarn:'预算即将超支！',budgetExceeded:'预算已超支！',
+    alertHistory:'告警历史',noAlerts:'暂无告警',ackAll:'全部已读',alertSettings:'告警设置',
+    alertConfig:'告警配置',warnThreshold:'黄色警告阈值',criticalThreshold:'橙色警告阈值',
+    maxThreshold:'红色告警阈值',checkInterval:'检查间隔',soundEnabled:'声音提示',
+    cancel:'取消',save:'保存',configSaved:'配置已保存',
+    levelWarn:'注意',levelCritical:'警告',levelMax:'严重',
+    typeBudget:'预算',typeToken:'Token',ack:'已读',
+    providerCompare:'Provider 对比',cmpTokens:'词元',cmpRequests:'请求数',cmpCost:'费用',
+    chartBar:'柱状图',chartPie:'饼图',chartLine:'线图',
+    cmpTokenUsed:'Token 用量',cmpReqCount:'请求数',cmpCostVal:'费用($)',
+    cmpAvgLatency:'平均延迟',cmpModels:'模型分布',cmpTrend:'趋势对比'
   },
   en:{title:'AI Model Monitor',refresh:'Refresh',requestLog:'Request Log',tokenTrend:'Token Usage Trend',
     today:'Today',last7days:'7 Days',last30days:'30 Days',custom:'Custom',
@@ -226,27 +589,43 @@ const I18N={
     online:'Online',cooling:'Cooling',cached:'cached',noReqs:'No requests yet',
     stream:'Stream',nonStream:'Non-Stream',ok:'Done',fail:'Fail',
     input:'Input',output:'Output',total:'Total',cacheHit:'hit',
-    totalCost:'Total Cost',reqPerMin:'Req/Min',lastError:'Last Error',
+    totalCost:'Total Cost',alibabaChannel:'Alibaba Cloud',reqPerMin:'Req/Min',lastError:'Last Error',
     tokenUsed:'Used',tokenLimit:'Limit',usage:'Usage',
-    alertTitle:'Alert',quotaWarning:'Token usage reached 80%'
+    alertTitle:'Alert',quotaWarning:'Token usage reached 80%',
+    dailyBudget:'Daily Budget',monthlyBudget:'Monthly Budget',limit:'Limit',
+    spent:'Spent',remaining:'Remaining',saveBudget:'Save Budget',
+    budgetSaved:'Budget saved',budgetWarn:'Budget nearly exceeded!',budgetExceeded:'Budget exceeded!',
+    alertHistory:'Alert History',noAlerts:'No alerts',ackAll:'Mark All Read',alertSettings:'Alert Settings',
+    alertConfig:'Alert Config',warnThreshold:'Yellow Warning',criticalThreshold:'Orange Warning',
+    maxThreshold:'Red Alert',checkInterval:'Check Interval',soundEnabled:'Sound',
+    cancel:'Cancel',save:'Save',configSaved:'Config saved',
+    levelWarn:'Notice',levelCritical:'Warning',levelMax:'Critical',
+    typeBudget:'Budget',typeToken:'Token',ack:'Read',
+    providerCompare:'Provider Comparison',cmpTokens:'Tokens',cmpRequests:'Requests',cmpCost:'Cost',
+    chartBar:'Bar',chartPie:'Pie',chartLine:'Line',
+    cmpTokenUsed:'Token Usage',cmpReqCount:'Requests',cmpCostVal:'Cost($)',
+    cmpAvgLatency:'Avg Latency',cmpModels:'Model Distribution',cmpTrend:'Trend'
   }
 };
 
 let lang=localStorage.getItem('lang')||'zh';
 let currentRange='today';
 let lastAlertTime=0;
+let alertPanelOpen=false;
+let alertSoundEnabled=true;
+let lastUnackCount=0;
 const TOKEN_LIMIT=1000000;
 
 function t(k){return(I18N[lang]||I18N.zh)[k]||k}
 function fmt(n){if(n==null)return'-';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n)}
 function colorClass(p){return p==='MiMo'?'background:var(--blue)':p==='Claude'?'background:var(--cyan)':'background:var(--purple)'}
 
-function showAlert(title,msg){
+function showAlert(title,msg,level){
   const el=document.getElementById('alert');
   document.getElementById('alert-title').textContent=title;
   document.getElementById('alert-msg').textContent=msg;
-  el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),5000);
+  el.className='alert show'+(level==='max'?' alert-max':level==='critical'?' alert-critical':level==='warn'?' alert-warn':'');
+  setTimeout(()=>{el.classList.remove('show','alert-warn','alert-critical','alert-max')},5000);
 }
 function closeAlert(){document.getElementById('alert').classList.remove('show')}
 
@@ -257,7 +636,9 @@ function setLang(l){
   document.getElementById('btn-zh').classList.toggle('active',l==='zh');
   document.getElementById('btn-en').classList.toggle('active',l==='en');
   document.title=t('title');
+  loadBudget();
   load();
+  if(compareData)renderCompareChart();
 }
 
 function setRange(range){
@@ -287,6 +668,160 @@ function getDayName(dateStr){
   const days_en=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const d=new Date(dateStr);
   return lang==='zh'?days_cn[d.getDay()]:days_en[d.getDay()];
+}
+
+async function loadBudget(){
+  try{
+    const r=await fetch('/api/budget');
+    const d=await r.json();
+    document.getElementById('budget-daily-input').value=d.daily.limit.toFixed(2);
+    document.getElementById('budget-monthly-input').value=d.monthly.limit.toFixed(2);
+    renderBudget('daily',d.daily);
+    renderBudget('monthly',d.monthly);
+    if(d.daily.percent>=80||d.monthly.percent>=80){
+      showAlert(t('alertTitle'),d.daily.percent>=100||d.monthly.percent>=100?t('budgetExceeded'):t('budgetWarn'));
+    }
+  }catch{}
+}
+
+function renderBudget(type,data){
+  document.getElementById(type+'-spent').textContent='$'+data.spent.toFixed(2);
+  document.getElementById(type+'-remaining').textContent='$'+data.remaining.toFixed(2);
+  const pct=Math.min(100,data.percent);
+  const bar=document.getElementById(type+'-bar');
+  bar.style.width=pct+'%';
+  bar.className='budget-fill '+(pct>=100?'danger':pct>=80?'warning':'normal');
+  document.getElementById(type+'-pct').textContent=data.percent.toFixed(1)+'%';
+}
+
+async function saveBudget(){
+  const daily=parseFloat(document.getElementById('budget-daily-input').value)||0;
+  const monthly=parseFloat(document.getElementById('budget-monthly-input').value)||0;
+  try{
+    await fetch('/api/budget',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({daily_limit:daily,monthly_limit:monthly})});
+    showAlert(t('saveBudget'),t('budgetSaved'));
+    loadBudget();
+  }catch{}
+}
+
+function playAlertSound(level){
+  if(!alertSoundEnabled)return;
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.type='sine';
+    osc.frequency.value=level==='max'?880:level==='critical'?660:440;
+    gain.gain.value=0.15;
+    osc.start();osc.stop(ctx.currentTime+0.2);
+    if(level==='max'){
+      const osc2=ctx.createOscillator();
+      osc2.connect(gain);
+      osc2.type='sine';osc2.frequency.value=1100;
+      osc2.start(ctx.currentTime+0.25);osc2.stop(ctx.currentTime+0.45);
+    }
+  }catch{}
+}
+
+function toggleAlertPanel(){
+  alertPanelOpen=!alertPanelOpen;
+  document.getElementById('alert-panel').classList.toggle('open',alertPanelOpen);
+  if(alertPanelOpen)loadAlerts();
+}
+
+function showAlertConfig(){
+  fetch('/api/alerts?action=config').then(r=>r.json()).then(cfg=>{
+    document.getElementById('cfg-warn').value=cfg.warn_threshold;
+    document.getElementById('cfg-critical').value=cfg.critical_threshold;
+    document.getElementById('cfg-max').value=cfg.max_threshold;
+    document.getElementById('cfg-interval').value=cfg.check_interval_sec;
+    document.getElementById('cfg-sound').checked=!!cfg.sound_enabled;
+    document.getElementById('alert-config-modal').style.display='flex';
+  });
+}
+
+function closeAlertConfig(){document.getElementById('alert-config-modal').style.display='none'}
+
+async function saveAlertConfig(){
+  const params=new URLSearchParams({
+    warn:document.getElementById('cfg-warn').value,
+    critical:document.getElementById('cfg-critical').value,
+    max:document.getElementById('cfg-max').value,
+    interval:document.getElementById('cfg-interval').value,
+    sound:document.getElementById('cfg-sound').checked?'1':'0',
+    action:'update'
+  });
+  await fetch('/api/alerts?'+params);
+  alertSoundEnabled=document.getElementById('cfg-sound').checked;
+  closeAlertConfig();
+  showAlert(t('alertConfig'),t('configSaved'));
+}
+
+async function ackAlert(id){
+  await fetch('/api/alerts?action=ack&id='+id);
+  loadAlerts();
+}
+
+async function ackAllAlerts(){
+  await fetch('/api/alerts?action=ack_all');
+  loadAlerts();
+}
+
+async function loadAlerts(){
+  try{
+    const r=await fetch('/api/alerts?limit=50');
+    const d=await r.json();
+    const body=document.getElementById('alert-panel-body');
+    const empty=document.getElementById('alert-empty');
+    if(!d.alerts||d.alerts.length===0){
+      body.innerHTML=`<div class="empty">${t('noAlerts')}</div>`;
+      return;
+    }
+    body.innerHTML=d.alerts.map(a=>{
+      const levelCls=a.level==='max'?'max':a.level==='critical'?'critical':'warn';
+      const levelLabel=a.level==='max'?t('levelMax'):a.level==='critical'?t('levelCritical'):t('levelWarn');
+      const pct=a.threshold>0?((a.current_value/a.threshold)*100).toFixed(1):'0';
+      return`<div class="alert-item ${a.acknowledged?'acknowledged':''}">
+        <button class="ack-btn" onclick="ackAlert(${a.id})" title="${t('ack')}">&#10003;</button>
+        <div class="alert-item-header">
+          <span class="alert-level ${levelCls}">${levelLabel}</span>
+          <span class="alert-time">${a.ts||''}</span>
+        </div>
+        <div class="alert-detail">${a.message||''}</div>
+        <div class="alert-meta">${a.provider?a.provider+'/'+a.model:a.type} · ${pct}%</div>
+      </div>`;
+    }).join('');
+  }catch{}
+}
+
+async function checkNewAlerts(){
+  try{
+    const r=await fetch('/api/alerts?action=list&unack=1&limit=5');
+    const d=await r.json();
+    const count=d.unack_count||0;
+    const badge=document.getElementById('alert-count');
+    const bell=document.getElementById('alert-bell');
+    if(count>0){
+      badge.style.display='';
+      badge.textContent=count>99?'99+':count;
+      bell.classList.add('has-alerts');
+      if(count>lastUnackCount&&d.alerts&&d.alerts.length>0){
+        const latest=d.alerts[0];
+        const levelCls=latest.level==='max'?'alert-max':latest.level==='critical'?'alert-critical':'alert-warn';
+        const el=document.getElementById('alert');
+        el.className='alert show '+levelCls;
+        document.getElementById('alert-title').textContent=t('alertTitle');
+        document.getElementById('alert-msg').textContent=latest.message||'';
+        playAlertSound(latest.level);
+        setTimeout(()=>el.classList.remove('show','alert-warn','alert-critical','alert-max'),6000);
+      }
+    }else{
+      badge.style.display='none';
+      bell.classList.remove('has-alerts');
+    }
+    lastUnackCount=count;
+  }catch{}
 }
 
 function drawChart(data,isHourly){
@@ -435,10 +970,10 @@ async function load(){
       <td class="mono" style="color:var(--dim)">#${String(recent.length-i).padStart(6,'0')}</td>
       <td class="mono" style="color:var(--dim);font-size:11px">${r.request_id||'-'}</td>
       <td><span style="font-weight:500">${r.model}</span></td>
-      <td>${r.stream?`<span class="badge badge-stream">${t('stream')}</span>`:`<span style="color:var(--dim)">${t('nonStream')}</span>`}</td>
-      <td style="color:var(--dim)">${r.source||'API'}</td>
-      <td class="mono" style="color:var(--dim);font-size:11px">${r.client_ip||'-'}</td>
-      <td style="color:var(--dim)">${r.channel||'-'}</td>
+      <td class="hide-mobile">${r.stream?`<span class="badge badge-stream">${t('stream')}</span>`:`<span style="color:var(--dim)">${t('nonStream')}</span>`}</td>
+      <td class="hide-mobile" style="color:var(--dim)">${r.source||'API'}</td>
+      <td class="hide-mobile mono" style="color:var(--dim);font-size:11px">${r.client_ip||'-'}</td>
+      <td class="hide-mobile" style="color:var(--dim)">${r.channel||'-'}</td>
       <td>${r.provider||'-'}</td>
       <td><span class="badge ${r.status==='ok'?'badge-ok':'badge-fail'}">${r.status==='ok'?t('ok'):t('fail')}</span></td>
       <td>
@@ -446,20 +981,351 @@ async function load(){
         <div style="font-size:11px;color:var(--dim)">${t('input')}: ${fmt(r.input_tokens)} | ${t('output')}: ${fmt(r.output_tokens)}</div>
         <div class="token-bar"><div class="inp" style="width:${inpPct}%"></div><div class="out" style="width:${outPct}%"></div></div>
       </td>
-      <td class="num">${r.cache_read?`<span class="cache-pct">${fmt(r.cache_read)}</span><br><span class="cache-pct" style="font-size:10px">${cachePct}% ${t('cacheHit')}</span>`:'<span style="color:var(--dim)">-</span>'}</td>
+      <td class="hide-mobile num">${r.cache_read?`<span class="cache-pct">${fmt(r.cache_read)}</span><br><span class="cache-pct" style="font-size:10px">${cachePct}% ${t('cacheHit')}</span>`:'<span style="color:var(--dim)">-</span>'}</td>
       <td class="num">${r.cost?`<span class="cost">$${r.cost.toFixed(4)}</span>`:'<span style="color:var(--dim)">-</span>'}</td>
       <td class="num" style="font-variant-numeric:tabular-nums">${r.latency_ms?`${(r.latency_ms/1000).toFixed(1)}s`:'-'}${r.ttft_ms?`<br><span style="font-size:10px;color:var(--dim)">TTFT: ${(r.ttft_ms/1000).toFixed(1)}s</span>`:''}</td>
-      <td style="color:var(--dim);font-size:12px">${r.ts||'-'}</td>
+      <td class="hide-mobile" style="color:var(--dim);font-size:12px">${r.ts||'-'}</td>
     </tr>`
   }).join(''):`<tr><td colspan="14" class="empty">${t('noReqs')}</td></tr>`;
+}
+
+// ─── Provider 对比图表 ─────────────────────────────────────────────
+const PROVIDER_COLORS={MiMo:'#3b82f6',MiniMax:'#a855f7',Claude:'#06b6d4',Alibaba:'#ff6a00'};
+let compareData=null;
+let compareRange='today';
+let compareMetric='tokens';
+let chartType='bar';
+
+function setCompareRange(r){
+  compareRange=r;
+  document.querySelectorAll('#compare-range button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('cmp-range-'+r).classList.add('active');
+  loadCompare();
+}
+function setCompareMetric(m){
+  compareMetric=m;
+  document.querySelectorAll('.compare-metric-btns button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('cmp-'+m).classList.add('active');
+  renderCompareChart();
+}
+function setChartType(t){
+  chartType=t;
+  document.querySelectorAll('.chart-type-btns button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('chart-'+t).classList.add('active');
+  renderCompareChart();
+}
+
+async function loadCompare(){
+  try{
+    const r=await fetch('/api/compare?range='+compareRange);
+    compareData=await r.json();
+    renderCompareChart();
+  }catch{}
+}
+
+function getMetricVal(p){
+  if(compareMetric==='tokens')return p.tok||0;
+  if(compareMetric==='requests')return p.cnt||0;
+  if(compareMetric==='cost')return p.cost||0;
+  return 0;
+}
+function getMetricLabel(){
+  if(compareMetric==='tokens')return t('cmpTokenUsed');
+  if(compareMetric==='requests')return t('cmpReqCount');
+  if(compareMetric==='cost')return t('cmpCostVal');
+  return '';
+}
+function fmtMetric(v){
+  if(compareMetric==='cost')return'$'+v.toFixed(4);
+  return fmt(v);
+}
+
+function renderCompareChart(){
+  if(!compareData)return;
+  const body=document.getElementById('compare-body');
+  if(chartType==='bar')renderBarChart(body);
+  else if(chartType==='pie')renderPieChart(body);
+  else if(chartType==='line')renderLineChart(body);
+}
+
+function renderBarChart(body){
+  const ps=compareData.providerSummary||[];
+  if(!ps.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
+  const maxVal=Math.max(...ps.map(p=>getMetricVal(p)),1);
+
+  let html='<div class="bar-chart">';
+  ps.forEach(p=>{
+    const val=getMetricVal(p);
+    const pct=Math.max(2,(val/maxVal)*100);
+    const color=PROVIDER_COLORS[p.provider]||'#666';
+    html+=`<div class="bar-group">
+      <div class="bar-group-label">${p.provider}</div>
+      <div class="bar-col-fill" style="height:${pct}%;background:${color};width:48px">
+        <div class="bar-tip">
+          <div style="font-weight:600;margin-bottom:3px">${p.provider}</div>
+          <div>${t('cmpTokenUsed')}: ${fmt(p.tok)}</div>
+          <div>${t('cmpReqCount')}: ${p.cnt}</div>
+          <div>${t('cmpCostVal')}: $${(p.cost||0).toFixed(4)}</div>
+          <div>${t('cmpAvgLatency')}: ${Math.round(p.avg_latency||0)}ms</div>
+        </div>
+      </div>
+      <div class="bar-col-label">${fmtMetric(val)}</div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // 图例
+  html+='<div class="bar-legend">';
+  html+=`<div class="bar-legend-item"><div class="bar-legend-dot" style="background:var(--blue)"></div>${t('cmpTokenUsed')}</div>`;
+  html+='<div class="bar-legend-item">'+getMetricLabel()+'</div>';
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+function renderPieChart(body){
+  const ms=compareData.modelSummary||[];
+  if(!ms.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
+  const total=ms.reduce((a,m)=>a+getMetricVal(m),0);
+  if(total===0){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
+
+  const sorted=[...ms].sort((a,b)=>getMetricVal(b)-getMetricVal(a));
+  const colors=['#3b82f6','#a855f7','#06b6d4','#22c55e','#eab308','#ef4444','#f97316','#ec4899'];
+
+  // SVG pie
+  let cumulative=0;
+  let paths='';
+  sorted.forEach((m,i)=>{
+    const val=getMetricVal(m);
+    const pct=val/total;
+    const startAngle=cumulative*2*Math.PI;
+    cumulative+=pct;
+    const endAngle=cumulative*2*Math.PI;
+    const largeArc=pct>0.5?1:0;
+    const x1=110+100*Math.sin(startAngle);
+    const y1=110-100*Math.cos(startAngle);
+    const x2=110+100*Math.sin(endAngle);
+    const y2=110-100*Math.cos(endAngle);
+    const color=colors[i%colors.length];
+    if(pct>=0.999){
+      paths+=`<circle cx="110" cy="110" r="100" fill="${color}"><title>${m.provider}/${m.model}: ${fmtMetric(val)} (${(pct*100).toFixed(1)}%)</title></circle>`;
+    }else{
+      paths+=`<path d="M110,110 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}"><title>${m.provider}/${m.model}: ${fmtMetric(val)} (${(pct*100).toFixed(1)}%)</title></path>`;
+    }
+  });
+
+  let legend='';
+  sorted.forEach((m,i)=>{
+    const val=getMetricVal(m);
+    const pct=(val/total*100).toFixed(1);
+    const color=colors[i%colors.length];
+    legend+=`<div class="pie-legend-item">
+      <div class="pie-legend-color" style="background:${color}"></div>
+      <div class="pie-legend-text">
+        <span class="pie-legend-name">${m.provider}/${m.model}</span>
+        <span class="pie-legend-val">${fmtMetric(val)} (${pct}%)</span>
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML=`<div class="pie-chart-wrap">
+    <svg class="pie-svg" viewBox="0 0 220 220">${paths}</svg>
+    <div class="pie-legend">${legend}</div>
+  </div>`;
+}
+
+function renderLineChart(body){
+  const trends=compareData.trends||[];
+  const providers=compareData.providerSummary||[];
+  if(!trends.length||!providers.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
+
+  const provNames=providers.map(p=>p.provider);
+  const allVals=[];
+  trends.forEach(t=>{provNames.forEach(n=>{const d=t.data[n];allVals.push(d?getMetricVal(d):0);});});
+  const maxVal=Math.max(...allVals,1);
+
+  const W=700,H=240,padL=50,padR=20,padT=20,padB=30;
+  const chartW=W-padL-padR;
+  const chartH=H-padT-padB;
+  const stepX=trends.length>1?chartW/(trends.length-1):chartW;
+
+  // Grid lines
+  let gridLines='';
+  for(let i=0;i<=4;i++){
+    const y=padT+chartH*(1-i/4);
+    const val=maxVal*i/4;
+    gridLines+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#2a2d3a" stroke-width="1"/>`;
+    gridLines+=`<text x="${padL-6}" y="${y+4}" fill="#71717a" font-size="10" text-anchor="end">${fmtMetric(val)}</text>`;
+  }
+
+  // X labels
+  let xLabels='';
+  const labelStep=Math.max(1,Math.floor(trends.length/8));
+  trends.forEach((t,i)=>{
+    if(i%labelStep===0||i===trends.length-1){
+      const x=padL+i*stepX;
+      xLabels+=`<text x="${x}" y="${H-4}" fill="#71717a" font-size="10" text-anchor="middle">${t.period}</text>`;
+    }
+  });
+
+  // Lines
+  let lines='';
+  let dots='';
+  provNames.forEach((name,pi)=>{
+    const color=PROVIDER_COLORS[name]||'#666';
+    let points=[];
+    trends.forEach((t,i)=>{
+      const d=t.data[name];
+      const val=d?getMetricVal(d):0;
+      const x=padL+i*stepX;
+      const y=padT+chartH*(1-val/maxVal);
+      points.push(`${x},${y}`);
+      dots+=`<circle cx="${x}" cy="${y}" r="3" fill="${color}" stroke="var(--card)" stroke-width="1.5"><title>${name} | ${t.period}: ${fmtMetric(val)}</title></circle>`;
+    });
+    if(points.length>1){
+      lines+=`<polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+  });
+
+  let legend='';
+  provNames.forEach(name=>{
+    const color=PROVIDER_COLORS[name]||'#666';
+    legend+=`<div class="line-legend-item"><div class="line-legend-line" style="background:${color}"></div>${name}</div>`;
+  });
+
+  body.innerHTML=`<div class="line-chart-wrap">
+    <svg class="line-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}${xLabels}${lines}${dots}
+    </svg>
+    <div class="line-legend">${legend}</div>
+  </div>`;
+}
+
+// 手势支持 - 左右滑动切换图表
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+let swipeHintShown = true;
+
+function handleTouchStart(e) {
+  touchStartX = e.changedTouches[0].screenX;
+}
+
+function handleTouchEnd(e) {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}
+
+function handleSwipe() {
+  const diff = touchStartX - touchEndX;
+  if (Math.abs(diff) < SWIPE_THRESHOLD) return;
+  
+  const chartTypes = ['bar', 'pie', 'line'];
+  const currentIndex = chartTypes.indexOf(chartType);
+  
+  if (diff > 0) {
+    // 向左滑动 - 下一个图表类型
+    const nextIndex = (currentIndex + 1) % chartTypes.length;
+    setChartType(chartTypes[nextIndex]);
+  } else {
+    // 向右滑动 - 上一个图表类型
+    const prevIndex = (currentIndex - 1 + chartTypes.length) % chartTypes.length;
+    setChartType(chartTypes[prevIndex]);
+  }
+  
+  // 隐藏滑动提示
+  if (swipeHintShown) {
+    const hint = document.getElementById('swipe-hint');
+    if (hint) {
+      hint.style.opacity = '0';
+      setTimeout(() => {
+        hint.style.display = 'none';
+      }, 300);
+      swipeHintShown = false;
+    }
+  }
+}
+
+// 为对比图表区域添加触摸事件
+const compareBody = document.getElementById('compare-body');
+if (compareBody) {
+  compareBody.addEventListener('touchstart', handleTouchStart, { passive: true });
+  compareBody.addEventListener('touchend', handleTouchEnd, { passive: true });
+  
+  // 触摸时隐藏滑动提示
+  compareBody.addEventListener('touchstart', function() {
+    if (swipeHintShown) {
+      const hint = document.getElementById('swipe-hint');
+      if (hint) {
+        hint.style.opacity = '0';
+        setTimeout(() => {
+          hint.style.display = 'none';
+        }, 300);
+        swipeHintShown = false;
+      }
+    }
+  }, { passive: true });
+}
+
+// 移动端菜单切换
+function toggleMobileMenu() {
+  const headerActions = document.querySelector('.header-actions');
+  headerActions.classList.toggle('mobile-menu-open');
 }
 
 // 初始化
 document.getElementById('btn-zh').classList.toggle('active',lang==='zh');
 document.getElementById('btn-en').classList.toggle('active',lang==='en');
 document.querySelectorAll('.date-range input[type="date"],.date-range .date-sep').forEach(el=>el.style.display='none');
+loadBudget();
 load();
+loadCompare();
+loadAlertConfig();
+
+// 检测是否为移动设备，显示滑动提示
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  const hint = document.getElementById('swipe-hint');
+  if (hint && window.innerWidth <= 600) {
+    hint.style.display = 'block';
+  }
+}
+
+// 检测表格是否可以滚动
+function checkTableScroll() {
+  const tableWrap = document.querySelector('.table-wrap');
+  if (tableWrap) {
+    const isScrollable = tableWrap.scrollWidth > tableWrap.clientWidth;
+    tableWrap.classList.toggle('scrollable', isScrollable);
+    
+    // 添加滚动事件监听
+    tableWrap.addEventListener('scroll', function() {
+      const isAtEnd = this.scrollLeft + this.clientWidth >= this.scrollWidth - 10;
+      this.classList.toggle('scrolled-end', isAtEnd);
+      
+      // 隐藏滚动提示
+      if (this.scrollLeft > 10) {
+        this.classList.add('scrolled');
+      }
+    });
+  }
+}
+
+// 监听窗口大小变化
+window.addEventListener('resize', checkTableScroll);
+// 初始检查
+setTimeout(checkTableScroll, 100);
 setInterval(load,2000);
+setInterval(loadBudget,10000);
+setInterval(loadCompare,5000);
+setInterval(checkNewAlerts,5000);
+checkNewAlerts();
+
+async function loadAlertConfig(){
+  try{
+    const r=await fetch('/api/alerts?action=config');
+    const cfg=await r.json();
+    alertSoundEnabled=!!cfg.sound_enabled;
+  }catch{}
+}
 </script>
 </body>
 </html>
