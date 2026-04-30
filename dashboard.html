@@ -3,24 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Model Monitor</title>
+<title>AI 模型监控面板</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#e4e4e7;--dim:#71717a;--green:#22c55e;--red:#ef4444;--yellow:#eab308;--blue:#3b82f6;--purple:#a855f7;--cyan:#06b6d4}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px;font-size:13px}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
 .header h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
-.header h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.header h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 .header-actions{display:flex;gap:8px;align-items:center}
 .header-actions button{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .15s}
 .header-actions button:hover{color:var(--text);border-color:var(--dim)}
 .header-actions button.active{color:var(--blue);border-color:var(--blue)}
 
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:all .2s}
+.stat:hover{border-color:var(--dim)}
 .stat .label{font-size:11px;color:var(--dim);margin-bottom:4px}
 .stat .value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
 .stat .sub{font-size:11px;color:var(--dim);margin-top:2px}
+.stat .trend{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:4px}
+.stat .trend.up{color:var(--green)}
+.stat .trend.down{color:var(--red)}
+
+.main-content{display:grid;grid-template-columns:1fr 350px;gap:16px;margin-bottom:16px}
+@media(max-width:1200px){.main-content{grid-template-columns:1fr}}
+
+.provider-cards{display:flex;flex-direction:column;gap:12px}
+.prov-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.prov-card .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.prov-card .name{font-size:14px;font-weight:600}
+.prov-card .status{display:flex;align-items:center;gap:6px}
+.prov-card .status-dot{width:6px;height:6px;border-radius:50%}
+.prov-card .status-dot.online{background:var(--green);box-shadow:0 0 6px var(--green)}
+.prov-card .status-dot.cooling{background:var(--red);box-shadow:0 0 6px var(--red)}
+
+.prov-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.prov-stat{background:var(--bg);border-radius:6px;padding:8px 10px;text-align:center}
+.prov-stat .val{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.prov-stat .lbl{font-size:10px;color:var(--dim);margin-top:2px}
+
+.prov-card .models{display:flex;flex-direction:column;gap:6px}
+.prov-card .model-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:12px;transition:all .2s}
+.prov-card .model-row:hover{background:#1e2130}
+.prov-card .model-row .left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.prov-card .model-row .model-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prov-card .model-row .bar-wrap{width:100px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
+.prov-card .model-row .bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
+.prov-card .model-row .right{color:var(--dim);font-variant-numeric:tabular-nums;text-align:right;min-width:100px}
+
+.prov-card .last-error{margin-top:8px;font-size:11px;color:var(--red);padding:6px 8px;background:var(--bg);border-radius:4px}
+
+.chart-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.chart-title{font-size:13px;font-weight:600;color:var(--dim)}
+
+.date-range{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.date-range button{background:var(--bg);border:1px solid var(--border);color:var(--dim);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .15s}
+.date-range button:hover{color:var(--text);border-color:var(--dim)}
+.date-range button.active{background:var(--blue);color:white;border-color:var(--blue)}
+.date-range input[type="date"]{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer}
+.date-range input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.5)}
+.date-range .date-sep{color:var(--dim);font-size:11px}
+
+.chart-container{height:200px;position:relative}
+.chart-bar{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:flex-end;gap:2px;height:100%;padding:0 2px}
+.chart-bar .bar{flex:1;background:var(--blue);border-radius:2px 2px 0 0;transition:height .5s ease;min-height:2px;position:relative;cursor:pointer}
+.chart-bar .bar:hover{opacity:0.8}
+.chart-bar .bar .tooltip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:4px;font-size:11px;white-space:nowrap;z-index:10;pointer-events:none}
+.chart-bar .bar:hover .tooltip{display:block}
+.chart-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--dim);padding:0 2px}
 
 .section{margin-bottom:16px}
 .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -49,24 +102,26 @@ tr:hover td{background:#1a1e2e}
 .cache-pct{color:var(--cyan);font-size:11px}
 .cost{color:var(--yellow)}
 
-.provider-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:16px}
-.prov-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.prov-card .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.prov-card .name{font-size:14px;font-weight:600}
-.prov-card .models{display:flex;flex-direction:column;gap:6px}
-.prov-card .model-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px}
-.prov-card .model-row .left{display:flex;align-items:center;gap:8px}
-.prov-card .model-row .bar-wrap{width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.prov-card .model-row .bar-fill{height:100%;border-radius:2px}
-.prov-card .model-row .right{color:var(--dim);font-variant-numeric:tabular-nums}
-
 .empty{text-align:center;color:var(--dim);padding:30px;font-size:13px}
+
+.alert{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:none;z-index:100;max-width:300px}
+.alert.show{display:block;animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.alert .alert-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.alert .alert-msg{font-size:12px;color:var(--dim)}
+.alert .alert-close{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px}
 
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.stats-row{grid-template-columns:1fr 1fr}.stat .value{font-size:18px}}
 </style>
 </head>
 <body>
+
+<div class="alert" id="alert">
+  <button class="alert-close" onclick="closeAlert()">&times;</button>
+  <div class="alert-title" id="alert-title"></div>
+  <div class="alert-msg" id="alert-msg"></div>
+</div>
 
 <div class="header">
   <h1><span class="dot"></span> <t k="title">AI 模型监控面板</t></h1>
@@ -79,7 +134,27 @@ tr:hover td{background:#1a1e2e}
 
 <div class="stats-row" id="stats-row"></div>
 
-<div class="provider-cards" id="providers"></div>
+<div class="main-content">
+  <div>
+    <div class="chart-section">
+      <div class="chart-header">
+        <div class="chart-title"><t k="tokenTrend">Token 使用趋势</t></div>
+        <div class="date-range">
+          <button onclick="setRange('today')" id="range-today" class="active"><t k="today">今天</t></button>
+          <button onclick="setRange('7days')" id="range-7days"><t k="last7days">近 7 天</t></button>
+          <button onclick="setRange('30days')" id="range-30days"><t k="last30days">近 30 天</t></button>
+          <button onclick="setRange('custom')" id="range-custom"><t k="custom">自定义</t></button>
+          <input type="date" id="start-date" onchange="applyCustomRange()">
+          <span class="date-sep">~</span>
+          <input type="date" id="end-date" onchange="applyCustomRange()">
+        </div>
+      </div>
+      <div class="chart-container" id="chart-container"></div>
+      <div class="chart-labels" id="chart-labels"></div>
+    </div>
+  </div>
+  <div class="provider-cards" id="providers"></div>
+</div>
 
 <div class="section">
   <div class="section-head">
@@ -129,30 +204,51 @@ tr:hover td{background:#1a1e2e}
 
 <script>
 const I18N={
-  zh:{title:'AI 模型监控面板',refresh:'刷新',requestLog:'请求日志',
+  zh:{title:'AI 模型监控面板',refresh:'刷新',requestLog:'请求日志',tokenTrend:'Token 使用趋势',
+    today:'今天',last7days:'近 7 天',last30days:'近 30 天',custom:'自定义',
     thReqId:'ID',thModel:'模型ID',thStream:'流式',thSource:'来源',thClientIp:'客户端IP',
     thChannel:'渠道',thProvider:'服务商',thStatus:'状态',thTokens:'词元',
     thCacheRead:'读缓存',thCost:'成本',thLatency:'耗时',thTime:'创建时间',
     totalReqs:'总请求数',totalTokens:'总词元',todayReqs:'今日请求',todayTokens:'今日词元',avgLatency:'平均延迟',
     online:'在线',cooling:'冷却中',cached:'缓存',noReqs:'暂无请求',
     stream:'流式',nonStream:'非流式',ok:'已完成',fail:'失败',
-    input:'输入',output:'输出',total:'总计',cacheHit:'命中'
+    input:'输入',output:'输出',total:'总计',cacheHit:'命中',
+    totalCost:'总成本',reqPerMin:'请求/分钟',lastError:'最后错误',
+    tokenUsed:'已使用',tokenLimit:'上限',usage:'使用率',
+    alertTitle:'告警',quotaWarning:'Token 用量已达 80%'
   },
-  en:{title:'AI Model Monitor',refresh:'Refresh',requestLog:'Request Log',
+  en:{title:'AI Model Monitor',refresh:'Refresh',requestLog:'Request Log',tokenTrend:'Token Usage Trend',
+    today:'Today',last7days:'7 Days',last30days:'30 Days',custom:'Custom',
     thReqId:'ID',thModel:'Model',thStream:'Stream',thSource:'Source',thClientIp:'Client IP',
     thChannel:'Channel',thProvider:'Provider',thStatus:'Status',thTokens:'Tokens',
     thCacheRead:'Cache Read',thCost:'Cost',thLatency:'Latency',thTime:'Created',
     totalReqs:'Total Requests',totalTokens:'Total Tokens',todayReqs:'Today Requests',todayTokens:'Today Tokens',avgLatency:'Avg Latency',
     online:'Online',cooling:'Cooling',cached:'cached',noReqs:'No requests yet',
     stream:'Stream',nonStream:'Non-Stream',ok:'Done',fail:'Fail',
-    input:'Input',output:'Output',total:'Total',cacheHit:'hit'
+    input:'Input',output:'Output',total:'Total',cacheHit:'hit',
+    totalCost:'Total Cost',reqPerMin:'Req/Min',lastError:'Last Error',
+    tokenUsed:'Used',tokenLimit:'Limit',usage:'Usage',
+    alertTitle:'Alert',quotaWarning:'Token usage reached 80%'
   }
 };
 
 let lang=localStorage.getItem('lang')||'zh';
+let currentRange='today';
+let lastAlertTime=0;
+const TOKEN_LIMIT=1000000;
+
 function t(k){return(I18N[lang]||I18N.zh)[k]||k}
 function fmt(n){if(n==null)return'-';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n)}
 function colorClass(p){return p==='MiMo'?'background:var(--blue)':p==='Claude'?'background:var(--cyan)':'background:var(--purple)'}
+
+function showAlert(title,msg){
+  const el=document.getElementById('alert');
+  document.getElementById('alert-title').textContent=title;
+  document.getElementById('alert-msg').textContent=msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),5000);
+}
+function closeAlert(){document.getElementById('alert').classList.remove('show')}
 
 function setLang(l){
   lang=l;localStorage.setItem('lang',l);
@@ -164,46 +260,179 @@ function setLang(l){
   load();
 }
 
+function setRange(range){
+  currentRange=range;
+  // 更新按钮状态
+  document.querySelectorAll('.date-range button').forEach(btn=>btn.classList.remove('active'));
+  document.getElementById('range-'+range).classList.add('active');
+  // 显示/隐藏日期选择器
+  const dateInputs=document.querySelectorAll('.date-range input[type="date"],.date-range .date-sep');
+  dateInputs.forEach(el=>el.style.display=range==='custom'?'':'none');
+  if(range!=='custom'){
+    load();
+  }
+}
+
+function applyCustomRange(){
+  const start=document.getElementById('start-date').value;
+  const end=document.getElementById('end-date').value;
+  if(start&&end){
+    load();
+  }
+}
+
+function getDayName(dateStr){
+  if(!dateStr)return'';
+  const days_cn=['周日','周一','周二','周三','周四','周五','周六'];
+  const days_en=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const d=new Date(dateStr);
+  return lang==='zh'?days_cn[d.getDay()]:days_en[d.getDay()];
+}
+
+function drawChart(data,isHourly){
+  const container=document.getElementById('chart-container');
+  const labels=document.getElementById('chart-labels');
+  if(!data||data.length===0){
+    container.innerHTML=`<div class="empty">${t('noReqs')}</div>`;
+    labels.innerHTML='';
+    return;
+  }
+  
+  const maxVal=Math.max(...data.map(d=>d.tokens),1);
+  const barWidth=100/data.length;
+  
+  let barsHtml='<div class="chart-bar">';
+  data.forEach((d,i)=>{
+    const height=Math.max(2,(d.tokens/maxVal)*100);
+    const label=isHourly?d.date+':00':d.date;
+    const dayName=isHourly?'':getDayName(d.date);
+    
+    // 模型明细
+    let modelDetails='';
+    if(d.models&&Object.keys(d.models).length>0){
+      const sorted=Object.entries(d.models).sort((a,b)=>b[1]-a[1]);
+      modelDetails=sorted.map(([name,tok])=>`<div style="margin-top:3px"><span style="color:var(--dim)">${name}:</span> ${fmt(tok)}</div>`).join('');
+    }
+    
+    barsHtml+=`<div class="bar" style="height:${height}%;width:${barWidth}%">
+      <div class="tooltip">
+        <div style="font-weight:600;margin-bottom:4px">${label}${dayName?' ('+dayName+')':''}</div>
+        <div>${fmt(d.tokens)} tokens · ${d.count} ${lang==='zh'?'次请求':'req'}</div>
+        ${d.cached?`<div style="color:var(--cyan)">${lang==='zh'?'缓存':'cached'}: ${fmt(d.cached)}</div>`:''}
+        ${modelDetails}
+      </div>
+    </div>`;
+  });
+  barsHtml+='</div>';
+  
+  container.innerHTML=barsHtml;
+  
+  // 标签
+  if(data.length>0){
+    const maxLabels=7;
+    const step=Math.max(1,Math.floor(data.length/maxLabels));
+    let labelsHtml='';
+    for(let i=0;i<data.length;i+=step){
+      const d=data[i];
+      labelsHtml+=`<span>${isHourly?d.date+':00':d.date.slice(5)}</span>`;
+    }
+    if(data.length>1){
+      const last=data[data.length-1];
+      if(!labelsHtml.includes(isHourly?last.date+':00':last.date.slice(5))){
+        labelsHtml+=`<span>${isHourly?last.date+':00':last.date.slice(5)}</span>`;
+      }
+    }
+    labels.innerHTML=labelsHtml;
+  }
+}
+
 async function load(){
-  const r=await fetch('/api/stats');
+  let url='/api/stats';
+  if(currentRange==='custom'){
+    const start=document.getElementById('start-date').value;
+    const end=document.getElementById('end-date').value;
+    if(start&&end){
+      url+=`?range=custom&start=${start}&end=${end}`;
+    }else{
+      return; // 未选择日期不加载
+    }
+  }else{
+    url+=`?range=${currentRange}`;
+  }
+  
+  const r=await fetch(url);
   const d=await r.json();
   const s=d.summary||{};
-  const today=d.today||{};
+  const today=d.todaySummary||{};
 
-  // Stats row
+  // 统计卡片
+  const avgLatency=s.cnt?Math.round(s.latency/s.cnt):0;
+  
   document.getElementById('stats-row').innerHTML=`
-    <div class="stat"><div class="label">${t('totalReqs')}</div><div class="value">${fmt(s.cnt)}</div></div>
+    <div class="stat"><div class="label">${t('totalReqs')}</div><div class="value">${fmt(s.cnt)}</div><div class="trend up">↑ ${fmt(today.cnt)} ${t('todayReqs')}</div></div>
     <div class="stat"><div class="label">${t('totalTokens')}</div><div class="value">${fmt(s.tok)}</div><div class="sub">${t('cached')}: ${fmt(s.cached)}</div></div>
-    <div class="stat"><div class="label">${t('todayReqs')}</div><div class="value">${fmt(today.cnt)}</div></div>
     <div class="stat"><div class="label">${t('todayTokens')}</div><div class="value">${fmt(today.tok)}</div><div class="sub">${t('cached')}: ${fmt(today.cached)}</div></div>
-    <div class="stat"><div class="label">${t('avgLatency')}</div><div class="value">${s.cnt?Math.round(s.latency/s.cnt):0}ms</div></div>
+    <div class="stat"><div class="label">${t('totalCost')}</div><div class="value">${s.cost?'$'+s.cost.toFixed(2):'-'}</div><div class="sub">${today.cost?'$'+today.cost.toFixed(2):'-'} ${t('todayReqs')}</div></div>
+    <div class="stat"><div class="label">${t('avgLatency')}</div><div class="value">${avgLatency}ms</div></div>
   `;
 
-  // Provider cards
+  // Provider 卡片
   const byModel=d.byModel||[];
   const maxTok=Math.max(...byModel.map(m=>m.tok),1);
-  document.getElementById('providers').innerHTML=(d.providers||[]).map(p=>`
-    <div class="prov-card">
-      <div class="head"><span class="name">${p.name}</span><span class="badge ${p.status==='ok'?'badge-ok':'badge-fail'}">${p.status==='ok'?t('online'):t('cooling')}</span></div>
+  
+  document.getElementById('providers').innerHTML=(d.providers||[]).map(p=>{
+    const provModels=byModel.filter(m=>m.provider===p.name);
+    const totalTok=provModels.reduce((a,m)=>a+m.tok,0);
+    const totalCnt=provModels.reduce((a,m)=>a+m.cnt,0);
+    const usagePct=((totalTok/TOKEN_LIMIT)*100).toFixed(1);
+    
+    return`<div class="prov-card">
+      <div class="head">
+        <span class="name">${p.name}</span>
+        <div class="status">
+          <span class="status-dot ${p.status==='ok'?'online':'cooling'}"></span>
+          <span class="badge ${p.status==='ok'?'badge-ok':'badge-fail'}">${p.status==='ok'?t('online'):t('cooling')}</span>
+        </div>
+      </div>
+      <div class="prov-stats">
+        <div class="prov-stat"><div class="val">${fmt(totalTok)}</div><div class="lbl">${t('tokenUsed')}</div></div>
+        <div class="prov-stat"><div class="val">${totalCnt}</div><div class="lbl">${t('totalReqs')}</div></div>
+        <div class="prov-stat"><div class="val">${usagePct}%</div><div class="lbl">${t('usage')}</div></div>
+      </div>
       <div class="models">${p.models.map(mid=>{
         const m=byModel.find(x=>x.model===mid&&x.provider===p.name);
         const tok=m?m.tok:0;
         const cnt=m?m.cnt:0;
         const pct=Math.max(1,(tok/maxTok)*100).toFixed(0);
-        return`<div class="model-row"><div class="left"><span>${mid}</span><div class="bar-wrap"><div class="bar-fill" style="${colorClass(p.name)};width:${pct}%"></div></div></div><div class="right">${fmt(tok)} tok / ${cnt} req</div></div>`
+        return`<div class="model-row">
+          <div class="left"><span class="model-name">${mid}</span><div class="bar-wrap"><div class="bar-fill" style="${colorClass(p.name)};width:${pct}%"></div></div></div>
+          <div class="right">${fmt(tok)} tok / ${cnt} req</div>
+        </div>`
       }).join('')}</div>
-    </div>
-  `).join('');
+      ${p.lastError?`<div class="last-error">${t('lastError')}: ${p.lastError}</div>`:''}
+    </div>`
+  }).join('');
 
-  // Request table
-  const rows=d.recent||[];
-  document.getElementById('req-count').textContent=`${rows.length} ${lang==='zh'?'条记录':'records'}`;
-  document.getElementById('tbody').innerHTML=rows.length?rows.map((r,i)=>{
+  // 趋势图
+  const dailyStats=d.dailyStats||[];
+  const isHourly=d.range==='today';
+  drawChart(dailyStats,isHourly);
+
+  // 告警检查
+  if(today.tok>TOKEN_LIMIT*0.8&&Date.now()-lastAlertTime>300000){
+    showAlert(t('alertTitle'),t('quotaWarning'));
+    lastAlertTime=Date.now();
+  }
+
+  // 请求表格
+  const recent=d.recent||[];
+  document.getElementById('req-count').textContent=`${recent.length} ${lang==='zh'?'条记录':'records'}`;
+  document.getElementById('tbody').innerHTML=recent.length?recent.map((r,i)=>{
     const inpPct=r.total_tokens?((r.input_tokens/r.total_tokens)*100).toFixed(0):0;
     const outPct=r.total_tokens?((r.output_tokens/r.total_tokens)*100).toFixed(0):0;
     const cachePct=r.total_tokens&&r.cache_read?((r.cache_read/r.total_tokens)*100).toFixed(1):'';
     return`<tr>
-      <td class="mono" style="color:var(--dim)">#${String(rows.length-i).padStart(6,'0')}</td>
+      <td class="mono" style="color:var(--dim)">#${String(recent.length-i).padStart(6,'0')}</td>
       <td class="mono" style="color:var(--dim);font-size:11px">${r.request_id||'-'}</td>
       <td><span style="font-weight:500">${r.model}</span></td>
       <td>${r.stream?`<span class="badge badge-stream">${t('stream')}</span>`:`<span style="color:var(--dim)">${t('nonStream')}</span>`}</td>
@@ -225,8 +454,10 @@ async function load(){
   }).join(''):`<tr><td colspan="14" class="empty">${t('noReqs')}</td></tr>`;
 }
 
+// 初始化
 document.getElementById('btn-zh').classList.toggle('active',lang==='zh');
 document.getElementById('btn-en').classList.toggle('active',lang==='en');
+document.querySelectorAll('.date-range input[type="date"],.date-range .date-sep').forEach(el=>el.style.display='none');
 load();
 setInterval(load,2000);
 </script>

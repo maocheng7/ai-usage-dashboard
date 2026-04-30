@@ -2,17 +2,17 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { DatabaseSync } = require('node:sqlite');
 const crypto = require('crypto');
 
 const PORT = 9090;
 const DB_PATH = path.join(__dirname, 'stats.db');
 
-// ─── Database ────────────────────────────────────────────────────────
+// ─── 数据库 ────────────────────────────────────────────────────────
 const db = new DatabaseSync(DB_PATH);
-db.exec(`DROP TABLE IF EXISTS requests`);
 db.exec(`
-  CREATE TABLE requests (
+  CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     request_id TEXT,
     ts TEXT DEFAULT (datetime('now','localtime')),
@@ -48,7 +48,7 @@ function insertRequest(info) {
   );
 }
 
-// ─── Providers ───────────────────────────────────────────────────────
+// ─── 服务商配置 ───────────────────────────────────────────────────
 const PROVIDERS = [
   {
     name: 'MiMo',
@@ -88,7 +88,68 @@ function markFailed(p, err) { p.status = 'cooling'; p.failUntil = Date.now() + C
 function markOk(p) { p.status = 'ok'; p.lastError = null; }
 function maskKey(k) { return k ? k.slice(0, 6) + '...' + k.slice(-4) : '-'; }
 
-// ─── Sync External ───────────────────────────────────────────────────
+// 获取服务器真实 IP（公网 IPv4）
+let SERVER_IP = '127.0.0.1';
+
+// 尝试获取公网 IPv4
+function fetchPublicIp() {
+  return new Promise((resolve) => {
+    const req = https.get('https://api.ipify.org', { timeout: 3000 }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve(data.trim()));
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+// 初始化时获取公网 IP
+(async () => {
+  try {
+    const publicIp = await fetchPublicIp();
+    if (publicIp && publicIp.includes('.')) {
+      SERVER_IP = publicIp;
+      console.log(`服务器公网 IPv4: ${SERVER_IP}`);
+    } else {
+      // 使用用户指定的公网 IP
+      SERVER_IP = '120.53.230.157';
+      console.log(`使用指定公网 IP: ${SERVER_IP}`);
+    }
+  } catch {
+    SERVER_IP = '120.53.230.157';
+    console.log(`使用指定公网 IP: ${SERVER_IP}`);
+  }
+})();
+
+// 费用计算（每百万 token 价格，单位美元）
+const PRICING = {
+  'MiMo': {
+    'mimo-v2.5-pro': { input: 2.0, output: 8.0, cached: 0.5 },
+    'mimo-v2.5': { input: 1.0, output: 4.0, cached: 0.25 },
+    'mimo-v2-pro': { input: 2.0, output: 8.0, cached: 0.5 },
+    'mimo-v2-omni': { input: 2.0, output: 8.0, cached: 0.5 },
+  },
+  'MiniMax': {
+    'MiniMax-M2.7': { input: 2.0, output: 8.0, cached: 0 },
+    'MiniMax-M2.7-highspeed': { input: 3.0, output: 12.0, cached: 0 },
+    'MiniMax-M2.5': { input: 1.0, output: 4.0, cached: 0 },
+  },
+};
+
+function calcCost(provider, model, inputTokens, outputTokens, cachedTokens) {
+  const providerPricing = PRICING[provider];
+  if (!providerPricing) return 0;
+  const pricing = providerPricing[model];
+  if (!pricing) return 0;
+  const nonCachedInput = inputTokens - cachedTokens;
+  const inputCost = (nonCachedInput / 1000000) * pricing.input;
+  const cachedCost = (cachedTokens / 1000000) * (pricing.cached || pricing.input * 0.5);
+  const outputCost = (outputTokens / 1000000) * pricing.output;
+  return inputCost + cachedCost + outputCost;
+}
+
+// ─── 外部数据同步 ───────────────────────────────────────────────────
 const CLAUDE_JSON = '/home/ubuntu/.claude.json';
 let lastSyncHash = '';
 
@@ -115,7 +176,7 @@ function syncExternal() {
 setInterval(syncExternal, 5000);
 syncExternal();
 
-// ─── Proxy Handler ───────────────────────────────────────────────────
+// ─── 代理处理 ───────────────────────────────────────────────────────
 function forwardRequest(provider, model, body, res, startTime, clientIp, requestId) {
   const url = new URL(provider.baseUrl + '/chat/completions');
   const payload = JSON.stringify({ ...body, model });
@@ -146,7 +207,7 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         if (firstChunk) { ttft = Date.now() - startTime; firstChunk = false; }
         res.write(chunk);
         buffer += chunk.toString();
-        // Parse SSE for usage
+        // 解析 SSE 数据获取用量信息
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
         for (const line of lines) {
@@ -166,11 +227,12 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         const inp = usage.prompt_tokens || 0;
         const out = usage.completion_tokens || 0;
         const cached = usage.prompt_tokens_details?.cached_tokens || 0;
+        const cost = calcCost(provider.name, model, inp, out, cached);
         insertRequest({
           request_id: requestId, model, stream: true, source: 'API', client_ip: clientIp,
           channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
           status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: inp + out,
-          cache_read: cached, cache_write: 0, cost: 0, latency_ms: latency, ttft_ms: ttft,
+          cache_read: cached, cache_write: 0, cost, latency_ms: latency, ttft_ms: ttft,
         });
       });
     } else {
@@ -192,11 +254,12 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         const inp = usage.prompt_tokens || 0;
         const out = usage.completion_tokens || 0;
         const cached = usage.prompt_tokens_details?.cached_tokens || 0;
+        const cost = calcCost(provider.name, model, inp, out, cached);
         insertRequest({
           request_id: requestId, model, stream: false, source: 'API', client_ip: clientIp,
           channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
           status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: inp + out,
-          cache_read: cached, cache_write: 0, cost: 0, latency_ms: latency, ttft_ms: 0,
+          cache_read: cached, cache_write: 0, cost, latency_ms: latency, ttft_ms: 0,
         });
         res.writeHead(upstream.statusCode, { 'Content-Type': 'application/json' });
         res.end(data);
@@ -216,33 +279,149 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
   req.end();
 }
 
-// ─── Stats API ───────────────────────────────────────────────────────
-function handleStats(res) {
+// ─── 统计接口 ───────────────────────────────────────────────────────
+function handleStats(res, url) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const summary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost, SUM(latency_ms) as latency FROM requests`).all()[0];
+  
+  // 获取日期范围参数
+  const range = url.searchParams.get('range') || 'today';
+  const startDate = url.searchParams.get('start');
+  const endDate = url.searchParams.get('end');
+  
+  let dateFilter = '';
+  let dateParams = [];
+  
+  if (range === 'today') {
+    dateFilter = 'WHERE date(ts) = ?';
+    dateParams = [today];
+  } else if (range === '7days') {
+    dateFilter = "WHERE ts >= datetime('now', '-7 days', 'localtime')";
+  } else if (range === '30days') {
+    dateFilter = "WHERE ts >= datetime('now', '-30 days', 'localtime')";
+  } else if (range === 'custom' && startDate && endDate) {
+    dateFilter = 'WHERE date(ts) >= ? AND date(ts) <= ?';
+    dateParams = [startDate, endDate];
+  }
+  
+  const summary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost, SUM(latency_ms) as latency FROM requests ${dateFilter}`).all(...dateParams)[0];
   const todaySummary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost FROM requests WHERE date(ts)=?`).all(today)[0];
-  const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost FROM requests GROUP BY provider`).all();
-  const byModel = db.prepare(`SELECT model, provider, COUNT(*) as cnt, SUM(input_tokens) as inp, SUM(output_tokens) as out, SUM(total_tokens) as tok, SUM(cache_read) as cached FROM requests GROUP BY model, provider`).all();
-  const recent = db.prepare(`SELECT * FROM requests ORDER BY id DESC LIMIT 100`).all();
+  const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost FROM requests ${dateFilter} GROUP BY provider`).all(...dateParams);
+  const byModel = db.prepare(`SELECT model, provider, COUNT(*) as cnt, SUM(input_tokens) as inp, SUM(output_tokens) as out, SUM(total_tokens) as tok, SUM(cache_read) as cached FROM requests ${dateFilter} GROUP BY model, provider`).all(...dateParams);
+  const recent = db.prepare(`SELECT * FROM requests ${dateFilter} ORDER BY id DESC LIMIT 100`).all(...dateParams);
   const providers = PROVIDERS.map(p => ({ name: p.name, status: p.status, lastError: p.lastError, models: p.models, channel: p.channel }));
 
+  // 按时间统计（补全所有时间点，含模型明细）
+  let dailyStats = [];
+  if (range === 'today') {
+    // 今天按小时，补全 24 小时
+    const hourlyData = db.prepare(`
+      SELECT strftime('%H', ts) as hour, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
+      FROM requests WHERE date(ts) = ?
+      GROUP BY strftime('%H', ts), provider, model
+    `).all(today);
+    const hourMap = {};
+    hourlyData.forEach(h => {
+      if (!hourMap[h.hour]) hourMap[h.hour] = { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      hourMap[h.hour].cnt += h.cnt;
+      hourMap[h.hour].tok += h.tok;
+      hourMap[h.hour].cached += h.cached;
+      hourMap[h.hour].cost += h.cost;
+      const key = h.provider + '/' + h.model;
+      hourMap[h.hour].models[key] = (hourMap[h.hour].models[key] || 0) + h.tok;
+    });
+    for (let i = 0; i < 24; i++) {
+      const h = String(i).padStart(2, '0');
+      const d = hourMap[h] || { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dailyStats.push({ date: h, count: d.cnt, tokens: d.tok, cached: d.cached, cost: d.cost, models: d.models });
+    }
+  } else if (range === '7days') {
+    const dailyData = db.prepare(`
+      SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
+      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime')
+      GROUP BY date(ts), provider, model
+    `).all();
+    const dayMap = {};
+    dailyData.forEach(d => {
+      if (!dayMap[d.date]) dayMap[d.date] = { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dayMap[d.date].cnt += d.cnt;
+      dayMap[d.date].tok += d.tok;
+      dayMap[d.date].cached += d.cached;
+      dayMap[d.date].cost += d.cost;
+      const key = d.provider + '/' + d.model;
+      dayMap[d.date].models[key] = (dayMap[d.date].models[key] || 0) + d.tok;
+    });
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const data = dayMap[dateStr] || { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dailyStats.push({ date: dateStr, count: data.cnt, tokens: data.tok, cached: data.cached, cost: data.cost, models: data.models });
+    }
+  } else if (range === '30days') {
+    const dailyData = db.prepare(`
+      SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
+      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime')
+      GROUP BY date(ts), provider, model
+    `).all();
+    const dayMap = {};
+    dailyData.forEach(d => {
+      if (!dayMap[d.date]) dayMap[d.date] = { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dayMap[d.date].cnt += d.cnt;
+      dayMap[d.date].tok += d.tok;
+      dayMap[d.date].cached += d.cached;
+      dayMap[d.date].cost += d.cost;
+      const key = d.provider + '/' + d.model;
+      dayMap[d.date].models[key] = (dayMap[d.date].models[key] || 0) + d.tok;
+    });
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const data = dayMap[dateStr] || { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dailyStats.push({ date: dateStr, count: data.cnt, tokens: data.tok, cached: data.cached, cost: data.cost, models: data.models });
+    }
+  } else if (range === 'custom' && startDate && endDate) {
+    const dailyData = db.prepare(`
+      SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
+      FROM requests WHERE date(ts) >= ? AND date(ts) <= ?
+      GROUP BY date(ts), provider, model
+    `).all(startDate, endDate);
+    const dayMap = {};
+    dailyData.forEach(d => {
+      if (!dayMap[d.date]) dayMap[d.date] = { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dayMap[d.date].cnt += d.cnt;
+      dayMap[d.date].tok += d.tok;
+      dayMap[d.date].cached += d.cached;
+      dayMap[d.date].cost += d.cost;
+      const key = d.provider + '/' + d.model;
+      dayMap[d.date].models[key] = (dayMap[d.date].models[key] || 0) + d.tok;
+    });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const data = dayMap[dateStr] || { cnt: 0, tok: 0, cached: 0, cost: 0, models: {} };
+      dailyStats.push({ date: dateStr, count: data.cnt, tokens: data.tok, cached: data.cached, cost: data.cost, models: data.models });
+    }
+  }
+
   res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  res.end(JSON.stringify({ providers, summary, today: todaySummary, byProvider, byModel, recent }));
+  res.end(JSON.stringify({ providers, summary, todaySummary, byProvider, byModel, recent, dailyStats, range, todayDate: today }));
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────
+// ─── 监控面板 ───────────────────────────────────────────────────────
 function handleDashboard(res) {
   const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf-8');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
 }
 
-// ─── Server ──────────────────────────────────────────────────────────
+// ─── 服务器 ────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (url.pathname === '/' || url.pathname === '/dashboard') return handleDashboard(res);
-  if (url.pathname === '/api/stats') return handleStats(res);
+  if (url.pathname === '/api/stats') return handleStats(res, url);
   if (url.pathname === '/v1/models' || url.pathname === '/models') {
     const all = PROVIDERS.flatMap(p => p.models.map(m => ({ id: m, object: 'model', owned_by: p.name })));
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -258,7 +437,8 @@ const server = http.createServer((req, res) => {
         const parsed = JSON.parse(body);
         const model = parsed.model || 'mimo-v2.5-pro';
         const { provider, model: resolvedModel } = pickProvider(model);
-        const clientIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
+        const clientIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 
+          (req.socket.remoteAddress === '127.0.0.1' || req.socket.remoteAddress === '::1' ? SERVER_IP : req.socket.remoteAddress) || 'unknown';
         const requestId = 'req-' + crypto.randomUUID().slice(0, 12);
         forwardRequest(provider, resolvedModel, parsed, res, Date.now(), clientIp, requestId);
       } catch (e) {
@@ -274,6 +454,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Proxy + Dashboard on http://0.0.0.0:${PORT}`);
-  console.log(`Priority: ${PROVIDERS.map(p => p.name).join(' -> ')}`);
+  console.log(`代理服务已启动: http://0.0.0.0:${PORT}`);
+  console.log(`优先级: ${PROVIDERS.map(p => p.name).join(' -> ')}`);
 });
