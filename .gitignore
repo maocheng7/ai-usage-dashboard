@@ -1,4 +1,5 @@
 node_modules/
 stats.db
+stats.db-journal
 *.log
 .DS_Store
