@@ -132,7 +132,12 @@ function checkAlerts() {
         const levelLabel = t.level === ALERT_LEVELS.max ? '🔴 严重' : t.level === ALERT_LEVELS.critical ? '🟠 警告' : '🟡 注意';
         const typeLabel = c.type === 'daily_budget' ? '每日预算' : c.type === 'monthly_budget' ? '每月预算' : 'Token 用量';
         const detail = c.provider ? `${c.provider}/${c.model}` : typeLabel;
-        const msg = `${levelLabel}: ${detail} 已使用 ${pct.toFixed(1)}% ($${c.current.toFixed(4)}/$${c.limit.toFixed(2)})`;
+        let msg;
+        if (c.type === 'token_usage') {
+          msg = `${levelLabel}: ${detail} 今日 Token 用量 ${pct.toFixed(1)}% (${c.current.toLocaleString()}/${c.limit.toLocaleString()})`;
+        } else {
+          msg = `${levelLabel}: ${detail} 已使用 ${pct.toFixed(1)}% ($${c.current.toFixed(4)}/$${c.limit.toFixed(2)})`;
+        }
 
         insertAlert({ level: t.level, type: c.type, provider: c.provider, model: c.model, current_value: c.current, threshold: t.threshold, message: msg });
         break;
