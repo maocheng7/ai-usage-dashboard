@@ -168,7 +168,7 @@ const PROVIDERS = [
     baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
     apiKey: 'tp-c8x9pz0lpghao0frcjwobmh5u6js8htnbv61r1als4rn4sup',
     channel: 'Mimo 订阅',
-    models: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-pro', 'mimo-v2-omni'],
+    models: ['mimo-v2.5-pro', 'mimo-v2.5'],
     status: 'ok', failUntil: 0, lastError: null,
   },
   {
@@ -176,7 +176,7 @@ const PROVIDERS = [
     baseUrl: 'https://api.minimax.chat/v1',
     apiKey: 'sk-cp-0J0H-xxJh0ne85xgU0K6JKpjysHEWHUKhb0OKnvMK4Eyx0n47V7sQ7RWjM4JYRpCgvTeJh7w0WpCaPspjQUtMvkp8EMNMLCsag5SDKeizatlBquzeK3c1hg',
     channel: 'MiniMax',
-    models: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed', 'MiniMax-M2.5'],
+    models: ['MiniMax-M2.7'],
     status: 'ok', failUntil: 0, lastError: null,
   },
   {
@@ -184,7 +184,7 @@ const PROVIDERS = [
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKey: process.env.ALIBABA_API_KEY || 'sk-alibaba-key',
     channel: '阿里云百炼',
-    models: ['qwen-coder-plus', 'qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long', 'qwen3.6-plus'],
+    models: ['qwen-turbo', 'qwen3.6-plus'],
     status: 'ok', failUntil: 0, lastError: null,
   },
 ];
@@ -196,19 +196,12 @@ setInterval(checkAlerts, 30000);
 const FALLBACK_MAP = {
   'mimo-v2.5-pro': 'MiniMax-M2.7',
   'mimo-v2.5': 'MiniMax-M2.7',
-  'mimo-v2-pro': 'MiniMax-M2.7',
-  'mimo-v2-omni': 'MiniMax-M2.7',
-  'qwen-coder-plus': 'qwen-plus',
-  'qwen-plus': 'qwen-turbo',
-  'qwen-turbo': 'qwen-plus',
-  'qwen-max': 'qwen-plus',
-  'qwen-long': 'qwen-plus',
-  'qwen3.6-plus': 'qwen-plus',
+  'qwen-turbo': 'qwen3.6-plus',
+  'qwen3.6-plus': 'qwen-turbo',
 };
 const COOLDOWN_MS = 60_000;
 
 function pickProvider(model) {
-  // 根据模型名称匹配正确的 provider
   for (const p of PROVIDERS) {
     if (p.models.includes(model)) {
       if (p.status === 'cooling' && Date.now() < p.failUntil) continue;
@@ -216,10 +209,11 @@ function pickProvider(model) {
       return { provider: p, model };
     }
   }
-  // 如果模型不在任何 provider 中，尝试匹配模型前缀
+  // 前缀匹配: qwen* -> Alibaba, mimo* -> MiMo, MiniMax* -> MiniMax
+  const prefixMap = { MiMo: ['mimo'], MiniMax: ['minimax'], Alibaba: ['qwen'] };
   for (const p of PROVIDERS) {
-    const matchedModel = p.models.find(m => model.startsWith(m.split('-')[0]));
-    if (matchedModel) {
+    const prefixes = prefixMap[p.name] || [];
+    if (prefixes.some(pf => model.toLowerCase().startsWith(pf.toLowerCase()))) {
       if (p.status === 'cooling' && Date.now() < p.failUntil) continue;
       p.status = 'ok';
       return { provider: p, model };
@@ -276,20 +270,12 @@ const PRICING = {
   'MiMo': {
     'mimo-v2.5-pro': { input: 2.0, output: 8.0, cached: 0.5 },
     'mimo-v2.5': { input: 1.0, output: 4.0, cached: 0.25 },
-    'mimo-v2-pro': { input: 2.0, output: 8.0, cached: 0.5 },
-    'mimo-v2-omni': { input: 2.0, output: 8.0, cached: 0.5 },
   },
   'MiniMax': {
     'MiniMax-M2.7': { input: 2.0, output: 8.0, cached: 0 },
-    'MiniMax-M2.7-highspeed': { input: 3.0, output: 12.0, cached: 0 },
-    'MiniMax-M2.5': { input: 1.0, output: 4.0, cached: 0 },
   },
   'Alibaba': {
-    'qwen-coder-plus': { input: 2.0, output: 8.0, cached: 0 },
-    'qwen-plus': { input: 1.0, output: 4.0, cached: 0 },
     'qwen-turbo': { input: 0.5, output: 2.0, cached: 0 },
-    'qwen-max': { input: 5.0, output: 20.0, cached: 0 },
-    'qwen-long': { input: 1.0, output: 4.0, cached: 0 },
     'qwen3.6-plus': { input: 2.0, output: 8.0, cached: 0 },
   },
 };
@@ -377,20 +363,27 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         }
       });
 
-      upstream.on('end', () => {
-        res.end();
-        const latency = Date.now() - startTime;
-        markOk(provider);
-        const inp = usage.prompt_tokens || 0;
-        const out = usage.completion_tokens || 0;
-        const cached = usage.prompt_tokens_details?.cached_tokens || 0;
-        const cost = calcCost(provider.name, model, inp, out, cached);
-        insertRequest({
-          request_id: requestId, model, stream: true, source: 'API', client_ip: clientIp,
-          channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
-          status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: inp + out,
-          cache_read: cached, cache_write: 0, cost, latency_ms: latency, ttft_ms: ttft,
-        });
+upstream.on('end', () => {
+            res.end();
+            const latency = Date.now() - startTime;
+            markOk(provider);
+            // 兼容多种 token 字段名
+            const inp = usage.prompt_tokens || usage.input_tokens || usage.promptTokens || 0;
+            const out = usage.completion_tokens || usage.output_tokens || usage.completionTokens || 0;
+            const total = usage.total_tokens || usage.totalTokens || (inp + out);
+            let cached = 0;
+            if (usage.prompt_tokens_details) {
+              cached = usage.prompt_tokens_details.cached_tokens || 0;
+            } else if (usage.usage) {
+              cached = usage.usage.prompt_tokens_details?.cached_tokens || 0;
+            }
+            const cost = calcCost(provider.name, model, inp, out, cached);
+            insertRequest({
+              request_id: requestId, model, stream: true, source: 'API', client_ip: clientIp,
+              channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
+              status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: total,
+              cache_read: cached, cache_write: 0, cost, latency_ms: latency, ttft_ms: ttft,
+            });
       });
     } else {
       let data = '';
@@ -415,14 +408,16 @@ function forwardRequest(provider, model, body, res, startTime, clientIp, request
         markOk(provider);
         let usage = {};
         try { usage = JSON.parse(data).usage || usage; } catch {}
-        const inp = usage.prompt_tokens || 0;
-        const out = usage.completion_tokens || 0;
-        const cached = usage.prompt_tokens_details?.cached_tokens || 0;
+        const inp = usage.prompt_tokens || usage.input_tokens || 0;
+        const out = usage.completion_tokens || usage.output_tokens || 0;
+        const total = usage.total_tokens || (inp + out);
+        let cached = 0;
+        if (usage.prompt_tokens_details) cached = usage.prompt_tokens_details.cached_tokens || 0;
         const cost = calcCost(provider.name, model, inp, out, cached);
         insertRequest({
           request_id: requestId, model, stream: false, source: 'API', client_ip: clientIp,
           channel: provider.channel, api_key: maskKey(provider.apiKey), provider: provider.name,
-          status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: inp + out,
+          status: 'ok', input_tokens: inp, output_tokens: out, total_tokens: total,
           cache_read: cached, cache_write: 0, cost, latency_ms: latency, ttft_ms: 0,
         });
         res.writeHead(upstream.statusCode, { 'Content-Type': 'application/json' });
@@ -460,6 +455,17 @@ function handleStats(res, url) {
   const startDate = url.searchParams.get('start');
   const endDate = url.searchParams.get('end');
   
+  // 分页参数
+  const page = Math.max(1, parseInt(url.searchParams.get('page')) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 50));
+  const offset = (page - 1) * limit;
+  
+  // 筛选参数
+  const filterProvider = url.searchParams.get('provider');
+  const filterModel = url.searchParams.get('model');
+  const filterStatus = url.searchParams.get('status');
+  const filterSearch = url.searchParams.get('search');
+  
   let dateFilter = '';
   let dateParams = [];
   
@@ -475,11 +481,46 @@ function handleStats(res, url) {
     dateParams = [startDate, endDate];
   }
   
-  const summary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost, SUM(latency_ms) as latency FROM requests ${dateFilter}`).all(...dateParams)[0];
-  const todaySummary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost FROM requests WHERE date(ts)=?`).all(today)[0];
-  const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost FROM requests ${dateFilter} GROUP BY provider`).all(...dateParams);
-  const byModel = db.prepare(`SELECT model, provider, COUNT(*) as cnt, SUM(input_tokens) as inp, SUM(output_tokens) as out, SUM(total_tokens) as tok, SUM(cache_read) as cached FROM requests ${dateFilter} GROUP BY model, provider`).all(...dateParams);
-  const recent = db.prepare(`SELECT * FROM requests ${dateFilter} ORDER BY id DESC LIMIT 1000000`).all(...dateParams);
+  // 构建筛选条件
+  const conditions = [];
+  const filterParams = [];
+  
+  if (filterProvider) {
+    conditions.push('provider = ?');
+    filterParams.push(filterProvider);
+  }
+  if (filterModel) {
+    conditions.push('model = ?');
+    filterParams.push(filterModel);
+  }
+  if (filterStatus) {
+    conditions.push('status = ?');
+    filterParams.push(filterStatus);
+  }
+  if (filterSearch) {
+    conditions.push('(request_id LIKE ? OR model LIKE ? OR provider LIKE ? OR client_ip LIKE ?)');
+    const searchPattern = `%${filterSearch}%`;
+    filterParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+  }
+  
+  // 合并筛选条件
+  const allConditions = [];
+  if (dateFilter) allConditions.push(dateFilter.replace('WHERE ', ''));
+  allConditions.push("provider != 'Claude'");
+  conditions.forEach(c => allConditions.push(c));
+  
+  const whereClause = allConditions.length > 0 ? 'WHERE ' + allConditions.join(' AND ') : '';
+  const allParams = [...dateParams, ...filterParams];
+  const summary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost, SUM(latency_ms) as latency FROM requests ${whereClause}`).all(...allParams)[0];
+  const todaySummary = db.prepare(`SELECT COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost FROM requests WHERE date(ts)=? AND provider != 'Claude'`).all(today)[0];
+  const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost FROM requests ${whereClause} GROUP BY provider`).all(...allParams);
+  const byModel = db.prepare(`SELECT model, provider, COUNT(*) as cnt, SUM(input_tokens) as inp, SUM(output_tokens) as out, SUM(total_tokens) as tok, SUM(cache_read) as cached FROM requests ${whereClause} GROUP BY model, provider`).all(...allParams);
+  
+  // 请求日志分页
+  const totalRequests = db.prepare(`SELECT COUNT(*) as total FROM requests ${whereClause}`).all(...allParams)[0].total;
+  const recent = db.prepare(`SELECT * FROM requests ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`).all(...allParams, limit, offset);
+  const totalPages = Math.ceil(totalRequests / limit);
+  
   const providers = PROVIDERS.map(p => ({ name: p.name, status: p.status, lastError: p.lastError, models: p.models, channel: p.channel }));
 
   // 按时间统计（补全所有时间点，含模型明细）
@@ -488,7 +529,7 @@ function handleStats(res, url) {
     // 今天按小时，补全 24 小时
     const hourlyData = db.prepare(`
       SELECT strftime('%H', ts) as hour, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
-      FROM requests WHERE date(ts) = ?
+      FROM requests WHERE date(ts) = ? AND provider != 'Claude'
       GROUP BY strftime('%H', ts), provider, model
     `).all(today);
     const hourMap = {};
@@ -509,7 +550,7 @@ function handleStats(res, url) {
   } else if (range === '7days') {
     const dailyData = db.prepare(`
       SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
-      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime')
+      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime') AND provider != 'Claude'
       GROUP BY date(ts), provider, model
     `).all();
     const dayMap = {};
@@ -532,7 +573,7 @@ function handleStats(res, url) {
   } else if (range === '30days') {
     const dailyData = db.prepare(`
       SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
-      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime')
+      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime') AND provider != 'Claude'
       GROUP BY date(ts), provider, model
     `).all();
     const dayMap = {};
@@ -555,7 +596,7 @@ function handleStats(res, url) {
   } else if (range === 'custom' && startDate && endDate) {
     const dailyData = db.prepare(`
       SELECT date(ts) as date, provider, model, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cache_read) as cached, SUM(cost) as cost
-      FROM requests WHERE date(ts) >= ? AND date(ts) <= ?
+      FROM requests WHERE date(ts) >= ? AND date(ts) <= ? AND provider != 'Claude'
       GROUP BY date(ts), provider, model
     `).all(startDate, endDate);
     const dayMap = {};
@@ -578,7 +619,7 @@ function handleStats(res, url) {
   }
 
   res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  res.end(JSON.stringify({ providers, summary, todaySummary, byProvider, byModel, recent, dailyStats, range, todayDate: today }));
+  res.end(JSON.stringify({ providers, summary, todaySummary, byProvider, byModel, recent, dailyStats, range, todayDate: today, pagination: { page, limit, totalRequests, totalPages } }));
 }
 
 // ─── Provider 对比接口 ─────────────────────────────────────────────
@@ -608,7 +649,7 @@ function handleCompare(res, url) {
       SUM(cache_read) as cached,
       SUM(cost) as cost,
       AVG(latency_ms) as avg_latency
-    FROM requests ${dateFilter}
+    FROM requests ${dateFilter} AND provider != 'Claude'
     GROUP BY provider
   `).all(...dateParams);
 
@@ -618,7 +659,7 @@ function handleCompare(res, url) {
       COUNT(*) as cnt,
       SUM(total_tokens) as tok,
       SUM(cost) as cost
-    FROM requests ${dateFilter}
+    FROM requests ${dateFilter} AND provider != 'Claude'
     GROUP BY model, provider
   `).all(...dateParams);
 
@@ -628,7 +669,7 @@ function handleCompare(res, url) {
     const hourlyData = db.prepare(`
       SELECT strftime('%H', ts) as period, provider,
         COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
-      FROM requests WHERE date(ts) = ?
+      FROM requests WHERE date(ts) = ? AND provider != 'Claude'
       GROUP BY strftime('%H', ts), provider
     `).all(today);
     const periodMap = {};
@@ -644,7 +685,7 @@ function handleCompare(res, url) {
     const dailyData = db.prepare(`
       SELECT date(ts) as period, provider,
         COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
-      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime')
+      FROM requests WHERE ts >= datetime('now', '-6 days', 'localtime') AND provider != 'Claude'
       GROUP BY date(ts), provider
     `).all();
     const periodMap = {};
@@ -662,7 +703,7 @@ function handleCompare(res, url) {
     const dailyData = db.prepare(`
       SELECT date(ts) as period, provider,
         COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
-      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime')
+      FROM requests WHERE ts >= datetime('now', '-29 days', 'localtime') AND provider != 'Claude'
       GROUP BY date(ts), provider
     `).all();
     const periodMap = {};
@@ -772,6 +813,112 @@ function handleAlerts(res, url) {
   res.end(JSON.stringify({ alerts, unack_count: unackCount }));
 }
 
+// ─── CSV 导出 ─────────────────────────────────────────────────────
+function handleExportCsv(res, url) {
+  const range = url.searchParams.get('range') || '30days';
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  let dateFilter = '';
+  let dateParams = [];
+  if (range === 'today') { dateFilter = 'WHERE date(ts) = ?'; dateParams = [today]; }
+  else if (range === '7days') { dateFilter = "WHERE ts >= datetime('now', '-7 days', 'localtime')"; }
+  else if (range === '30days') { dateFilter = "WHERE ts >= datetime('now', '-30 days', 'localtime')"; }
+  const whereClause = dateFilter ? `${dateFilter} AND provider != 'Claude'` : `WHERE provider != 'Claude'`;
+  const rows = db.prepare(`SELECT * FROM requests ${whereClause} ORDER BY id DESC`).all(...dateParams);
+  const header = 'ID,RequestID,Model,Stream,Source,ClientIP,Channel,Provider,Status,InputTokens,OutputTokens,TotalTokens,CacheRead,CacheWrite,Cost,LatencyMs,TtftMs,Time\n';
+  const csv = header + rows.map(r =>
+    `${r.id},"${r.request_id}","${r.model}",${r.stream},"${r.source}","${r.client_ip}","${r.channel}","${r.provider}","${r.status}",${r.input_tokens},${r.output_tokens},${r.total_tokens},${r.cache_read},${r.cache_write},${r.cost},${r.latency_ms},${r.ttft_ms},"${r.ts}"`
+  ).join('\n');
+  res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename=ai-usage-${today}.csv`, 'Access-Control-Allow-Origin': '*' });
+  res.end('\uFEFF' + csv);
+}
+
+// ─── 模型性能对比 ──────────────────────────────────────────────────
+function handleModelPerf(res, url) {
+  const range = url.searchParams.get('range') || '7days';
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  let dateFilter = '';
+  let dateParams = [];
+  if (range === 'today') { dateFilter = 'WHERE date(ts) = ?'; dateParams = [today]; }
+  else if (range === '7days') { dateFilter = "WHERE ts >= datetime('now', '-7 days', 'localtime')"; }
+  else if (range === '30days') { dateFilter = "WHERE ts >= datetime('now', '-30 days', 'localtime')"; }
+  const whereClause = dateFilter ? `${dateFilter} AND provider != 'Claude'` : `WHERE provider != 'Claude'`;
+  
+  const models = db.prepare(`
+    SELECT model, provider,
+      COUNT(*) as total_reqs,
+      SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) as ok_reqs,
+      SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed_reqs,
+      SUM(total_tokens) as total_tokens,
+      SUM(cost) as total_cost,
+      AVG(CASE WHEN status='ok' THEN latency_ms ELSE NULL END) as avg_latency,
+      MIN(CASE WHEN status='ok' THEN latency_ms ELSE NULL END) as min_latency,
+      MAX(CASE WHEN status='ok' THEN latency_ms ELSE NULL END) as max_latency,
+      SUM(cache_read) as cache_read
+    FROM requests ${whereClause}
+    GROUP BY model, provider
+    ORDER BY total_reqs DESC
+  `).all(...dateParams);
+  
+  const enriched = models.map(m => ({
+    ...m,
+    success_rate: m.total_reqs > 0 ? (m.ok_reqs / m.total_reqs * 100) : 0,
+    cost_per_1k_tokens: m.total_tokens > 0 ? (m.total_cost / m.total_tokens * 1000) : 0,
+    cache_hit_rate: m.total_tokens > 0 ? (m.cache_read / m.total_tokens * 100) : 0,
+  }));
+  
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ models: enriched, range }));
+}
+
+// ─── 请求详情 ─────────────────────────────────────────────────────
+function handleRequestDetail(res, id) {
+  const row = db.prepare(`SELECT * FROM requests WHERE id = ?`).get(parseInt(id));
+  if (!row) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify(row));
+}
+
+// ─── 用量热力图 ────────────────────────────────────────────────────
+function handleHeatmap(res, url) {
+  const months = parseInt(url.searchParams.get('months')) || 3;
+  const data = db.prepare(`
+    SELECT date(ts) as date, COUNT(*) as cnt, SUM(total_tokens) as tok, SUM(cost) as cost
+    FROM requests WHERE ts >= datetime('now', ? || ' months', 'localtime') AND provider != 'Claude'
+    GROUP BY date(ts) ORDER BY date(ts)
+  `).all(String(-months));
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ months, data }));
+}
+
+// ─── 数据清理 ─────────────────────────────────────────────────────
+function handleCleanup(res, body) {
+  try {
+    const { days } = JSON.parse(body);
+    if (!days || days < 1) throw new Error('Invalid days');
+    const result = db.prepare(`DELETE FROM requests WHERE ts < datetime('now', '-' + ? + ' days', 'localtime')`).run(days);
+    const alerts = db.prepare(`DELETE FROM alerts WHERE ts < datetime('now', '-' + ? + ' days', 'localtime')`).run(days);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ok: true, deleted_requests: result.changes, deleted_alerts: alerts.changes }));
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// ─── 数据统计 ─────────────────────────────────────────────────────
+function handleDataStats(res) {
+  const stats = db.prepare(`SELECT COUNT(*) as total, MIN(ts) as oldest, MAX(ts) as newest FROM requests`).get();
+  const byProvider = db.prepare(`SELECT provider, COUNT(*) as cnt FROM requests GROUP BY provider`).all();
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ ...stats, byProvider }));
+}
+
 // ─── 监控面板 ───────────────────────────────────────────────────────
 function handleDashboard(res) {
   const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf-8');
@@ -784,6 +931,20 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (url.pathname === '/' || url.pathname === '/dashboard') return handleDashboard(res);
   if (url.pathname === '/api/stats') return handleStats(res, url);
+  if (url.pathname === '/api/export') return handleExportCsv(res, url);
+  if (url.pathname === '/api/model-perf') return handleModelPerf(res, url);
+  if (url.pathname === '/api/heatmap') return handleHeatmap(res, url);
+  if (url.pathname === '/api/data-stats') return handleDataStats(res);
+  if (url.pathname.startsWith('/api/request/')) {
+    const id = url.pathname.split('/').pop();
+    return handleRequestDetail(res, id);
+  }
+  if (url.pathname === '/api/cleanup' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => handleCleanup(res, body));
+    return;
+  }
   if (url.pathname === '/api/budget' && req.method === 'GET') return handleBudget(res, req);
   if (url.pathname === '/api/budget' && req.method === 'POST') {
     let body = '';

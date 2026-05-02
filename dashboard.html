@@ -27,8 +27,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .stat .trend.up{color:var(--green)}
 .stat .trend.down{color:var(--red)}
 
-.main-content{display:grid;grid-template-columns:1fr 350px;gap:16px;margin-bottom:16px}
-@media(max-width:1200px){.main-content{grid-template-columns:1fr}}
+.main-content{margin-bottom:16px}
 
 .provider-cards{display:flex;flex-direction:column;gap:12px}
 .prov-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
@@ -76,7 +75,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .chart-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--dim);padding:0 2px}
 
 .section{margin-bottom:16px}
-.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
 .section-title{font-size:13px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
 
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow-x:auto;position:relative}
@@ -196,7 +195,7 @@ tr:hover td{background:#1a1e2e}
 .compare-body{min-height:280px;position:relative}
 
 .bar-chart{display:flex;gap:24px;align-items:flex-end;justify-content:center;height:240px;padding:0 20px}
-.bar-group{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:200px}
+.bar-group{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
 .bar-group-label{font-size:11px;color:var(--dim);font-weight:600;margin-bottom:4px}
 .bar-group-bars{display:flex;gap:4px;align-items:flex-end;height:200px}
 .bar-column{display:flex;flex-direction:column;align-items:center;gap:4px}
@@ -377,6 +376,107 @@ tr:hover td{background:#1a1e2e}
     border-color: var(--blue);
   }
 }
+
+/* 分页样式 */
+.pagination{display:flex;justify-content:center;align-items:center;gap:8px;padding:16px 0;font-size:13px}
+.pagination button{background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .2s;min-width:36px}
+.pagination button:hover:not(:disabled){background:var(--border)}
+.pagination button.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.pagination button:disabled{opacity:0.4;cursor:not-allowed}
+.pagination .page-info{color:var(--dim)}
+.pagination .page-jump{display:flex;align-items:center;gap:4px}
+.pagination .page-jump input{width:50px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;text-align:center;font-size:12px}
+
+/* 筛选和工具栏 */
+.filter-group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.filter-group select,.filter-group input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px;max-width:120px}
+.filter-group input{min-width:80px}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s;white-space:nowrap}
+.icon-btn:hover{background:var(--border);color:var(--text)}
+.icon-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* 模型性能卡片 */
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:12px}
+.perf-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.perf-card .perf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.perf-card .perf-name{font-weight:600;font-size:14px}
+.perf-card .perf-provider{color:var(--dim);font-size:11px}
+.perf-card .perf-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.perf-card .perf-stat{font-size:12px}
+.perf-card .perf-stat .label{color:var(--dim);font-size:11px}
+.perf-card .perf-stat .val{font-weight:500;font-variant-numeric:tabular-nums}
+.perf-card .perf-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.perf-card .perf-bar .fill{height:100%;border-radius:2px;transition:width .5s}
+.perf-card .perf-bar .fill.green{background:var(--green)}
+.perf-card .perf-bar .fill.yellow{background:var(--yellow)}
+  .perf-card .perf-bar .fill.red{background:var(--red)}
+
+/* 主题切换 */
+:root[data-theme="light"]{
+  --bg:#f5f5f7;--card:#fff;--text:#1d1d1f;--dim:#86868b;--border:#d2d2d7;
+  --blue:#0071e3;--green:#34c759;--yellow:#ff9f0a;--red:#ff3b30;--cyan:#00d4ff;
+}
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--dim);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:14px;transition:all .2s}
+.theme-toggle:hover{background:var(--border);color:var(--text)}
+
+/* 详情弹窗 */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0008;z-index:400;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto;padding:20px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.modal-header h3{margin:0;font-size:16px}
+.modal-close{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;padding:4px}
+.modal-close:hover{color:var(--text)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.detail-item{padding:8px 0}
+.detail-item .label{color:var(--dim);font-size:11px;margin-bottom:2px}
+.detail-item .val{font-size:13px;font-variant-numeric:tabular-nums;word-break:break-all}
+.detail-full{grid-column:1/-1}
+.detail-actions{display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+
+/* 热力图 - 按月日历平铺 */
+.heatmap-wrap{overflow-x:auto;padding:10px 0}
+.heatmap-month-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.heatmap-month-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px;text-align:center}
+.heatmap-month-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:600px;margin:0 auto}
+.heatmap-weekday{font-size:11px;color:var(--dim);text-align:center;padding-bottom:6px;font-weight:500}
+.heatmap-cell{aspect-ratio:1;border-radius:4px;background:var(--border);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text);position:relative}
+.heatmap-cell:hover{outline:2px solid var(--blue);z-index:1}
+.heatmap-cell.l1{background:#0e4429;color:#7ee787}
+.heatmap-cell.l2{background:#006d32;color:#7ee787}
+.heatmap-cell.l3{background:#26a641;color:#fff}
+.heatmap-cell.l4{background:#39d353;color:#fff}
+.heatmap-legend{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:10px;color:var(--dim)}
+.heatmap-legend .heatmap-cell{cursor:default;aspect-ratio:1;width:14px}
+
+/* 数据清理设置 */
+.cleanup-section{margin-top:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.cleanup-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cleanup-row label{color:var(--dim);font-size:13px}
+.cleanup-row input{width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;text-align:center}
+.cleanup-row button{background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+.cleanup-row button:hover{opacity:0.8}
+.cleanup-stats{color:var(--dim);font-size:12px;margin-top:8px}
+
+/* Loading overlay */
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;visibility:hidden;transition:all .2s}
+.loading-overlay.show{opacity:1;visibility:visible}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:600}
+
+/* 键盘快捷键提示 */
+.shortcut-hint{position:fixed;bottom:16px;right:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:50}
+.shortcut-hint kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:monospace;font-size:10px}
+
+/* 移动端菜单 */
+.mobile-menu{display:none;position:fixed;top:0;left:0;right:0;background:var(--card);border-bottom:1px solid var(--border);z-index:100;padding:12px 16px;flex-direction:column;gap:8px}
+.mobile-menu.open{display:flex}
+
+/* Skeleton loading */
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
 </style>
 </head>
 <body>
@@ -419,11 +519,13 @@ tr:hover td{background:#1a1e2e}
 </div>
 
 <div class="header">
+  <div class="loading-overlay" id="loading-overlay"><div class="loading-spinner"></div></div>
   <h1><span class="dot"></span> <t k="title">AI 模型监控面板</t></h1>
   <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="菜单">&#9776;</button>
   <div class="header-actions">
     <button class="alert-badge" id="alert-bell" onclick="toggleAlertPanel()">&#128276; <span class="count" id="alert-count" style="display:none">0</span></button>
     <button onclick="load()">&#8635; <t k="refresh">刷新</t></button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">&#9790;</button>
     <button id="btn-zh" onclick="setLang('zh')">中文</button>
     <button id="btn-en" onclick="setLang('en')">EN</button>
   </div>
@@ -437,44 +539,41 @@ tr:hover td{background:#1a1e2e}
       <div class="budget-title">&#128176; <t k="dailyBudget">每日预算</t></div>
       <div class="budget-limit"><t k="limit">上限</t> $<input type="number" id="budget-daily-input" step="0.01" min="0" value="10.00"></div>
     </div>
-    <div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="daily-spent" class="budget-spent">$0.00</span></span></div>
-    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="daily-remaining">$0.00</span></div>
+<div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="daily-spent" class="budget-spent">-</span></span></div>
+    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="daily-remaining">-</span></div>
     <div class="budget-bar"><div class="budget-fill normal" id="daily-bar" style="width:0%"></div></div>
-    <div class="budget-pct" id="daily-pct">0%</div>
+    <div class="budget-pct" id="daily-pct">-</div>
   </div>
   <div class="budget-card">
     <div class="budget-head">
       <div class="budget-title">&#128197; <t k="monthlyBudget">每月预算</t></div>
       <div class="budget-limit"><t k="limit">上限</t> $<input type="number" id="budget-monthly-input" step="0.01" min="0" value="200.00"></div>
     </div>
-    <div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="monthly-spent" class="budget-spent">$0.00</span></span></div>
-    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="monthly-remaining">$0.00</span></div>
+<div class="budget-amounts"><span><t k="spent">已花费</t>: <span id="monthly-spent" class="budget-spent">-</span></span></div>
+    <div class="budget-remaining"><t k="remaining">剩余</t>: <span id="monthly-remaining">-</span></span></div>
     <div class="budget-bar"><div class="budget-fill normal" id="monthly-bar" style="width:0%"></div></div>
-    <div class="budget-pct" id="monthly-pct">0%</div>
+    <div class="budget-pct" id="monthly-pct">-</div>
     <div class="budget-actions"><button onclick="saveBudget()"><t k="saveBudget">保存预算</t></button></div>
   </div>
 </div>
 
 <div class="main-content">
-  <div>
-    <div class="chart-section">
-      <div class="chart-header">
-        <div class="chart-title"><t k="tokenTrend">Token 使用趋势</t></div>
-        <div class="date-range">
-          <button onclick="setRange('today')" id="range-today" class="active"><t k="today">今天</t></button>
-          <button onclick="setRange('7days')" id="range-7days"><t k="last7days">近 7 天</t></button>
-          <button onclick="setRange('30days')" id="range-30days"><t k="last30days">近 30 天</t></button>
-          <button onclick="setRange('custom')" id="range-custom"><t k="custom">自定义</t></button>
-          <input type="date" id="start-date" onchange="applyCustomRange()">
-          <span class="date-sep">~</span>
-          <input type="date" id="end-date" onchange="applyCustomRange()">
-        </div>
+  <div class="chart-section">
+    <div class="chart-header">
+      <div class="chart-title"><t k="tokenTrend">Token 使用趋势</t></div>
+      <div class="date-range">
+        <button onclick="setRange('today')" id="range-today" class="active"><t k="today">今天</t></button>
+        <button onclick="setRange('7days')" id="range-7days"><t k="last7days">近 7 天</t></button>
+        <button onclick="setRange('30days')" id="range-30days"><t k="last30days">近 30 天</t></button>
+        <button onclick="setRange('custom')" id="range-custom"><t k="custom">自定义</t></button>
+        <input type="date" id="start-date" onchange="applyCustomRange()">
+        <span class="date-sep">~</span>
+        <input type="date" id="end-date" onchange="applyCustomRange()">
       </div>
-      <div class="chart-container" id="chart-container"></div>
-      <div class="chart-labels" id="chart-labels"></div>
     </div>
+    <div class="chart-container" id="chart-container"></div>
+    <div class="chart-labels" id="chart-labels"></div>
   </div>
-  <div class="provider-cards" id="providers"></div>
 </div>
 
 <div class="compare-section">
@@ -508,8 +607,20 @@ tr:hover td{background:#1a1e2e}
 
 <div class="section">
   <div class="section-head">
-    <div class="section-title"><t k="requestLog">请求日志</t></div>
-    <div style="font-size:11px;color:var(--dim)" id="req-count"></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="section-title"><t k="requestLog">请求日志</t></div>
+      <div class="filter-group" id="filter-group">
+        <select id="filter-provider" onchange="applyFilter()"><option value=""><t k="allProviders">全部服务商</t></option></select>
+        <select id="filter-model" onchange="applyFilter()"><option value=""><t k="allModels">全部模型</t></option></select>
+        <select id="filter-status" onchange="applyFilter()"><option value=""><t k="allStatus">全部状态</t></option><option value="ok">OK</option><option value="failed">Failed</option></select>
+        <input type="text" id="filter-search" placeholder="搜索..." onkeydown="if(event.key==='Enter')applyFilter()">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="icon-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()" title="自动刷新">&#8635; 30s</button>
+      <button class="icon-btn" onclick="exportCSV()" title="导出 CSV">&#8681; CSV</button>
+      <div style="font-size:11px;color:var(--dim)" id="req-count"></div>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
@@ -550,6 +661,67 @@ tr:hover td{background:#1a1e2e}
       <tbody id="tbody"></tbody>
     </table>
   </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="section">
+  <div class="section-head">
+    <div class="section-title"><t k="modelPerf">模型性能对比</t></div>
+    <div class="date-range" id="perf-range">
+      <button onclick="setPerfRange('today')" id="perf-range-today"><t k="today">今天</t></button>
+      <button onclick="setPerfRange('7days')" id="perf-range-7days" class="active"><t k="last7days">近 7 天</t></button>
+      <button onclick="setPerfRange('30days')" id="perf-range-30days"><t k="last30days">近 30 天</t></button>
+    </div>
+  </div>
+  <div class="perf-grid" id="perf-grid"></div>
+</div>
+
+<div class="section">
+  <div class="section-head">
+    <div class="section-title"><t k="heatmap">用量热力图</t></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="icon-btn" onclick="shiftHeatmap(-1)" title="上一个月">&laquo;</button>
+      <span id="heatmap-range-label" style="font-size:12px;color:var(--dim);min-width:140px;text-align:center">Loading...</span>
+      <button class="icon-btn" onclick="shiftHeatmap(1)" title="下一个月">&raquo;</button>
+      <div class="heatmap-legend">
+        <span><t k="less">少</t></span>
+        <div class="heatmap-cell"></div>
+        <div class="heatmap-cell l1"></div>
+        <div class="heatmap-cell l2"></div>
+        <div class="heatmap-cell l3"></div>
+        <div class="heatmap-cell l4"></div>
+        <span><t k="more">多</t></span>
+      </div>
+    </div>
+  </div>
+  <div class="heatmap-wrap" id="heatmap-container"></div>
+</div>
+
+<div class="section">
+  <div class="section-head">
+    <div class="section-title"><t k="dataManagement">数据管理</t></div>
+  </div>
+  <div class="cleanup-section">
+    <div class="cleanup-row">
+      <label><t k="retainDays">保留数据</t></label>
+      <input type="number" id="cleanup-days" min="7" value="90">
+      <label><t k="days">天</t></label>
+      <button onclick="doCleanup()"><t k="cleanNow">立即清理</t></button>
+      <button onclick="loadDataStats()" style="background:var(--blue)"><t k="checkData">查看数据</t></button>
+    </div>
+    <div class="cleanup-stats" id="cleanup-stats"></div>
+  </div>
+</div>
+
+<!-- 请求详情弹窗 -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><t k="requestDetail">请求详情</t></h3>
+      <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
 </div>
 
 <script>
@@ -578,7 +750,12 @@ const I18N={
     providerCompare:'Provider 对比',cmpTokens:'词元',cmpRequests:'请求数',cmpCost:'费用',
     chartBar:'柱状图',chartPie:'饼图',chartLine:'线图',
     cmpTokenUsed:'Token 用量',cmpReqCount:'请求数',cmpCostVal:'费用($)',
-    cmpAvgLatency:'平均延迟',cmpModels:'模型分布',cmpTrend:'趋势对比'
+    cmpAvgLatency:'平均延迟',cmpModels:'模型分布',cmpTrend:'趋势对比',
+    allProviders:'全部服务商',allModels:'全部模型',allStatus:'全部状态',
+    modelPerf:'模型性能对比',successRate:'成功率',costPer1k:'每千Token成本',failedReqs:'失败请求',
+    heatmap:'用量热力图',less:'少',more:'多',
+    dataManagement:'数据管理',retainDays:'保留数据',days:'天',cleanNow:'立即清理',checkData:'查看数据',
+    requestDetail:'请求Detail',copyCurl:'复制 cURL',copied:'已复制！',confirmClean:'确认清理 {n} 天前的数据？'
   },
   en:{title:'AI Model Monitor',refresh:'Refresh',requestLog:'Request Log',tokenTrend:'Token Usage Trend',
     today:'Today',last7days:'7 Days',last30days:'30 Days',custom:'Custom',
@@ -604,7 +781,12 @@ const I18N={
     providerCompare:'Provider Comparison',cmpTokens:'Tokens',cmpRequests:'Requests',cmpCost:'Cost',
     chartBar:'Bar',chartPie:'Pie',chartLine:'Line',
     cmpTokenUsed:'Token Usage',cmpReqCount:'Requests',cmpCostVal:'Cost($)',
-    cmpAvgLatency:'Avg Latency',cmpModels:'Model Distribution',cmpTrend:'Trend'
+    cmpAvgLatency:'Avg Latency',cmpModels:'Model Distribution',cmpTrend:'Trend',
+    allProviders:'All Providers',allModels:'All Models',allStatus:'All Status',
+    modelPerf:'Model Performance',successRate:'Success Rate',costPer1k:'Cost/1k Tokens',failedReqs:'Failed',
+    heatmap:'Usage Heatmap',less:'Less',more:'More',
+    dataManagement:'Data Management',retainDays:'Retain data for',days:'days',cleanNow:'Clean Now',checkData:'Check Data',
+    requestDetail:'Request Detail',copyCurl:'Copy cURL',copied:'Copied!',confirmClean:'Confirm delete data older than {n} days?'
   }
 };
 
@@ -616,9 +798,13 @@ let alertSoundEnabled=true;
 let lastUnackCount=0;
 const TOKEN_LIMIT=1000000;
 
+// 分页状态
+let currentPage=1;
+let totalPages=1;
+let totalRequests=0;
+
 function t(k){return(I18N[lang]||I18N.zh)[k]||k}
 function fmt(n){if(n==null)return'-';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n)}
-function colorClass(p){return p==='MiMo'?'background:var(--blue)':p==='Claude'?'background:var(--cyan)':'background:var(--purple)'}
 
 function showAlert(title,msg,level){
   const el=document.getElementById('alert');
@@ -674,24 +860,28 @@ async function loadBudget(){
   try{
     const r=await fetch('/api/budget');
     const d=await r.json();
-    document.getElementById('budget-daily-input').value=d.daily.limit.toFixed(2);
-    document.getElementById('budget-monthly-input').value=d.monthly.limit.toFixed(2);
+    if(!d.daily||!d.monthly)return;
+    document.getElementById('budget-daily-input').value=(d.daily.limit||0).toFixed(2);
+    document.getElementById('budget-monthly-input').value=(d.monthly.limit||0).toFixed(2);
     renderBudget('daily',d.daily);
     renderBudget('monthly',d.monthly);
-    if(d.daily.percent>=80||d.monthly.percent>=80){
-      showAlert(t('alertTitle'),d.daily.percent>=100||d.monthly.percent>=100?t('budgetExceeded'):t('budgetWarn'));
+    if((d.daily.percent||0)>=80||(d.monthly.percent||0)>=80){
+      showAlert(t('alertTitle'),(d.daily.percent>=100||d.monthly.percent>=100)?t('budgetExceeded'):t('budgetWarn'));
     }
-  }catch{}
+  }catch(e){console.error('loadBudget:',e);}
 }
 
 function renderBudget(type,data){
-  document.getElementById(type+'-spent').textContent='$'+data.spent.toFixed(2);
-  document.getElementById(type+'-remaining').textContent='$'+data.remaining.toFixed(2);
-  const pct=Math.min(100,data.percent);
+  const spent=(data.spent||0);
+  const remaining=(data.remaining||0);
+  const percent=(data.percent||0);
+  document.getElementById(type+'-spent').textContent='$'+spent.toFixed(2);
+  document.getElementById(type+'-remaining').textContent='$'+remaining.toFixed(2);
+  const pct=Math.min(100,percent);
   const bar=document.getElementById(type+'-bar');
   bar.style.width=pct+'%';
   bar.className='budget-fill '+(pct>=100?'danger':pct>=80?'warning':'normal');
-  document.getElementById(type+'-pct').textContent=data.percent.toFixed(1)+'%';
+  document.getElementById(type+'-pct').textContent=percent.toFixed(1)+'%';
 }
 
 async function saveBudget(){
@@ -814,6 +1004,7 @@ async function checkNewAlerts(){
         document.getElementById('alert-title').textContent=t('alertTitle');
         document.getElementById('alert-msg').textContent=latest.message||'';
         playAlertSound(latest.level);
+        sendBrowserNotification(t('alertTitle'),latest.message||'');
         setTimeout(()=>el.classList.remove('show','alert-warn','alert-critical','alert-max'),6000);
       }
     }else{
@@ -833,11 +1024,19 @@ function drawChart(data,isHourly){
     return;
   }
   
-  const maxVal=Math.max(...data.map(d=>d.tokens),1);
-  const barWidth=100/data.length;
+  // 过滤掉无数据的时段
+  const filtered=isHourly?data.filter(d=>d.count>0):data;
+  if(!filtered.length){
+    container.innerHTML=`<div class="empty">${t('noReqs')}</div>`;
+    labels.innerHTML='';
+    return;
+  }
+  
+  const maxVal=Math.max(...filtered.map(d=>d.tokens),1);
+  const barWidth=100/filtered.length;
   
   let barsHtml='<div class="chart-bar">';
-  data.forEach((d,i)=>{
+  filtered.forEach((d,i)=>{
     const height=Math.max(2,(d.tokens/maxVal)*100);
     const label=isHourly?d.date+':00':d.date;
     const dayName=isHourly?'':getDayName(d.date);
@@ -863,16 +1062,16 @@ function drawChart(data,isHourly){
   container.innerHTML=barsHtml;
   
   // 标签
-  if(data.length>0){
+  if(filtered.length>0){
     const maxLabels=7;
-    const step=Math.max(1,Math.floor(data.length/maxLabels));
+    const step=Math.max(1,Math.floor(filtered.length/maxLabels));
     let labelsHtml='';
-    for(let i=0;i<data.length;i+=step){
-      const d=data[i];
+    for(let i=0;i<filtered.length;i+=step){
+      const d=filtered[i];
       labelsHtml+=`<span>${isHourly?d.date+':00':d.date.slice(5)}</span>`;
     }
-    if(data.length>1){
-      const last=data[data.length-1];
+    if(filtered.length>1){
+      const last=filtered[filtered.length-1];
       if(!labelsHtml.includes(isHourly?last.date+':00':last.date.slice(5))){
         labelsHtml+=`<span>${isHourly?last.date+':00':last.date.slice(5)}</span>`;
       }
@@ -894,11 +1093,16 @@ async function load(){
   }else{
     url+=`?range=${currentRange}`;
   }
+  url+=`&page=${currentPage}&limit=50`;
+  url+=getFilterParams();
   
   const r=await fetch(url);
   const d=await r.json();
   const s=d.summary||{};
   const today=d.todaySummary||{};
+  
+  // 更新筛选选项
+  updateFilterOptions(d);
 
   // 统计卡片
   const avgLatency=s.cnt?Math.round(s.latency/s.cnt):0;
@@ -910,43 +1114,6 @@ async function load(){
     <div class="stat"><div class="label">${t('totalCost')}</div><div class="value">${s.cost?'$'+s.cost.toFixed(2):'-'}</div><div class="sub">${today.cost?'$'+today.cost.toFixed(2):'-'} ${t('todayReqs')}</div></div>
     <div class="stat"><div class="label">${t('avgLatency')}</div><div class="value">${avgLatency}ms</div></div>
   `;
-
-  // Provider 卡片
-  const byModel=d.byModel||[];
-  const maxTok=Math.max(...byModel.map(m=>m.tok),1);
-  
-  document.getElementById('providers').innerHTML=(d.providers||[]).map(p=>{
-    const provModels=byModel.filter(m=>m.provider===p.name);
-    const totalTok=provModels.reduce((a,m)=>a+m.tok,0);
-    const totalCnt=provModels.reduce((a,m)=>a+m.cnt,0);
-    const usagePct=((totalTok/TOKEN_LIMIT)*100).toFixed(1);
-    
-    return`<div class="prov-card">
-      <div class="head">
-        <span class="name">${p.name}</span>
-        <div class="status">
-          <span class="status-dot ${p.status==='ok'?'online':'cooling'}"></span>
-          <span class="badge ${p.status==='ok'?'badge-ok':'badge-fail'}">${p.status==='ok'?t('online'):t('cooling')}</span>
-        </div>
-      </div>
-      <div class="prov-stats">
-        <div class="prov-stat"><div class="val">${fmt(totalTok)}</div><div class="lbl">${t('tokenUsed')}</div></div>
-        <div class="prov-stat"><div class="val">${totalCnt}</div><div class="lbl">${t('totalReqs')}</div></div>
-        <div class="prov-stat"><div class="val">${usagePct}%</div><div class="lbl">${t('usage')}</div></div>
-      </div>
-      <div class="models">${p.models.map(mid=>{
-        const m=byModel.find(x=>x.model===mid&&x.provider===p.name);
-        const tok=m?m.tok:0;
-        const cnt=m?m.cnt:0;
-        const pct=Math.max(1,(tok/maxTok)*100).toFixed(0);
-        return`<div class="model-row">
-          <div class="left"><span class="model-name">${mid}</span><div class="bar-wrap"><div class="bar-fill" style="${colorClass(p.name)};width:${pct}%"></div></div></div>
-          <div class="right">${fmt(tok)} tok / ${cnt} req</div>
-        </div>`
-      }).join('')}</div>
-      ${p.lastError?`<div class="last-error">${t('lastError')}: ${p.lastError}</div>`:''}
-    </div>`
-  }).join('');
 
   // 趋势图
   const dailyStats=d.dailyStats||[];
@@ -961,13 +1128,17 @@ async function load(){
 
   // 请求表格
   const recent=d.recent||[];
-  document.getElementById('req-count').textContent=`${recent.length} ${lang==='zh'?'条记录':'records'}`;
+  const pg=d.pagination||{};
+  currentPage=pg.page||1;
+  totalPages=pg.totalPages||1;
+  totalRequests=pg.totalRequests||0;
+  document.getElementById('req-count').textContent=`${totalRequests} ${lang==='zh'?'条记录':'records'} (${currentPage}/${totalPages})`;
   document.getElementById('tbody').innerHTML=recent.length?recent.map((r,i)=>{
     const inpPct=r.total_tokens?((r.input_tokens/r.total_tokens)*100).toFixed(0):0;
     const outPct=r.total_tokens?((r.output_tokens/r.total_tokens)*100).toFixed(0):0;
     const cachePct=r.total_tokens&&r.cache_read?((r.cache_read/r.total_tokens)*100).toFixed(1):'';
-    return`<tr>
-      <td class="mono" style="color:var(--dim)">#${String(recent.length-i).padStart(6,'0')}</td>
+    return`<tr onclick="showDetail(${r.id})" style="cursor:pointer">
+      <td class="mono" style="color:var(--dim)">#${String(totalRequests-(currentPage-1)*50-i).padStart(6,'0')}</td>
       <td class="mono" style="color:var(--dim);font-size:11px">${r.request_id||'-'}</td>
       <td><span style="font-weight:500">${r.model}</span></td>
       <td class="hide-mobile">${r.stream?`<span class="badge badge-stream">${t('stream')}</span>`:`<span style="color:var(--dim)">${t('nonStream')}</span>`}</td>
@@ -987,10 +1158,347 @@ async function load(){
       <td class="hide-mobile" style="color:var(--dim);font-size:12px">${r.ts||'-'}</td>
     </tr>`
   }).join(''):`<tr><td colspan="14" class="empty">${t('noReqs')}</td></tr>`;
+  renderPagination();
 }
 
+function renderPagination(){
+  const el=document.getElementById('pagination');
+  if(totalPages<=1){el.innerHTML='';return;}
+  
+  let html='';
+  // 上一页
+  html+=`<button onclick="goPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>&laquo;</button>`;
+  
+  // 页码
+  const maxShow=5;
+  let start=Math.max(1,currentPage-Math.floor(maxShow/2));
+  let end=Math.min(totalPages,start+maxShow-1);
+  if(end-start<maxShow-1) start=Math.max(1,end-maxShow+1);
+  
+  if(start>1){
+    html+=`<button onclick="goPage(1)">1</button>`;
+    if(start>2) html+=`<span class="page-info">...</span>`;
+  }
+  for(let i=start;i<=end;i++){
+    html+=`<button onclick="goPage(${i})" class="${i===currentPage?'active':''}">${i}</button>`;
+  }
+  if(end<totalPages){
+    if(end<totalPages-1) html+=`<span class="page-info">...</span>`;
+    html+=`<button onclick="goPage(${totalPages})">${totalPages}</button>`;
+  }
+  
+  // 下一页
+  html+=`<button onclick="goPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>&raquo;</button>`;
+  
+  // 跳转
+  html+=`<div class="page-jump"><span class="page-info">${lang==='zh'?'跳转':'Go'}</span><input type="number" min="1" max="${totalPages}" value="${currentPage}" onkeydown="if(event.key==='Enter')goPage(parseInt(this.value))"></div>`;
+  
+  el.innerHTML=html;
+}
+
+function goPage(p){
+  if(p<1||p>totalPages)return;
+  currentPage=p;
+  load();
+}
+
+// ─── 筛选功能 ──────────────────────────────────────────────────────
+function applyFilter(){
+  currentPage=1;
+  load();
+}
+
+function getFilterParams(){
+  const provider=document.getElementById('filter-provider').value;
+  const model=document.getElementById('filter-model').value;
+  const status=document.getElementById('filter-status').value;
+  const search=document.getElementById('filter-search').value;
+  let params='';
+  if(provider) params+=`&provider=${encodeURIComponent(provider)}`;
+  if(model) params+=`&model=${encodeURIComponent(model)}`;
+  if(status) params+=`&status=${encodeURIComponent(status)}`;
+  if(search) params+=`&search=${encodeURIComponent(search)}`;
+  return params;
+}
+
+function updateFilterOptions(d){
+  const providerSelect=document.getElementById('filter-provider');
+  const modelSelect=document.getElementById('filter-model');
+  const currentProvider=providerSelect.value;
+  const currentModel=modelSelect.value;
+  
+  // Update providers
+  const providers=(d.providers||[]).map(p=>p.name);
+  providerSelect.innerHTML=`<option value="">${t('allProviders')}</option>`+providers.map(p=>`<option value="${p}" ${p===currentProvider?'selected':''}>${p}</option>`).join('');
+  
+  // Update models
+  const models=[...new Set((d.byModel||[]).map(m=>m.model))];
+  modelSelect.innerHTML=`<option value="">${t('allModels')}</option>`+models.map(m=>`<option value="${m}" ${m===currentModel?'selected':''}>${m}</option>`).join('');
+}
+
+// ─── CSV 导出 ──────────────────────────────────────────────────────
+function exportCSV(){
+  const params=getFilterParams();
+  window.open(`/api/export?range=${currentRange}${params}`,'_blank');
+}
+
+// ─── 自动刷新 ──────────────────────────────────────────────────────
+let autoRefreshTimer=null;
+let autoRefreshEnabled=false;
+
+function toggleAutoRefresh(){
+  autoRefreshEnabled=!autoRefreshEnabled;
+  const btn=document.getElementById('auto-refresh-btn');
+  if(autoRefreshEnabled){
+    btn.classList.add('active');
+    autoRefreshTimer=setInterval(()=>{load();loadCompare();},30000);
+  }else{
+    btn.classList.remove('active');
+    if(autoRefreshTimer){clearInterval(autoRefreshTimer);autoRefreshTimer=null;}
+  }
+}
+
+// ─── 模型性能对比 ──────────────────────────────────────────────────
+let perfRange='7days';
+
+function setPerfRange(r){
+  perfRange=r;
+  document.querySelectorAll('#perf-range button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('perf-range-'+r).classList.add('active');
+  loadModelPerf();
+}
+
+async function loadModelPerf(){
+  try{
+    const r=await fetch('/api/model-perf?range='+perfRange);
+    const d=await r.json();
+    renderModelPerf(d.models||[]);
+  }catch(e){console.error('loadModelPerf:',e);}
+}
+
+function renderModelPerf(models){
+  const grid=document.getElementById('perf-grid');
+  if(!models.length){grid.innerHTML=`<div class="empty">${t('noReqs')}</div>`;return;}
+  
+  // 按 provider 分组
+  const grouped={};
+  models.forEach(m=>{
+    if(!grouped[m.provider]) grouped[m.provider]=[];
+    grouped[m.provider].push(m);
+  });
+  
+  let html='';
+  Object.entries(grouped).forEach(([provider, provModels])=>{
+    const totalReqs=provModels.reduce((a,m)=>a+m.total_reqs,0);
+    const totalTokens=provModels.reduce((a,m)=>a+m.total_tokens,0);
+    const totalCost=provModels.reduce((a,m)=>a+(m.total_cost||0),0);
+    const avgSuccessRate=provModels.reduce((a,m)=>a+m.success_rate,0)/provModels.length;
+    
+    html+=`<div class="perf-card">
+      <div class="perf-head">
+        <span class="perf-name">${provider}</span>
+        <span class="badge badge-ok">&#9679; ${t('online')}</span>
+      </div>
+      <div class="perf-stats">
+        <div class="perf-stat"><div class="label">${t('totalReqs')}</div><div class="val">${fmt(totalReqs)}</div></div>
+        <div class="perf-stat"><div class="label">${t('totalTokens')}</div><div class="val">${fmt(totalTokens)}</div></div>
+        <div class="perf-stat"><div class="label">${t('totalCost')}</div><div class="val">${totalCost?'$'+totalCost.toFixed(4):'-'}</div></div>
+        <div class="perf-stat"><div class="label">${t('successRate')}</div><div class="val">${avgSuccessRate.toFixed(1)}%</div></div>
+      </div>
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+        ${provModels.map(m=>{
+          const successRate=m.success_rate||0;
+          const barClass=successRate>=99?'green':successRate>=95?'yellow':'red';
+          const avgLatency=m.avg_latency?Math.round(m.avg_latency):0;
+          return`<div style="padding:8px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-weight:500;font-size:13px">${m.model}</span>
+              <span style="font-size:11px;color:var(--dim)">${avgLatency}ms</span>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;color:var(--dim)">
+              <span>${fmt(m.total_reqs)} req</span>
+              <span>${fmt(m.total_tokens)} tok</span>
+              <span>${successRate.toFixed(1)}%</span>
+            </div>
+            <div class="perf-bar" style="margin-top:6px"><div class="fill ${barClass}" style="width:${successRate}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  
+  grid.innerHTML=html;
+}
+
+// ─── 主题切换 ──────────────────────────────────────────────────────
+function toggleTheme(){
+  const current=document.documentElement.getAttribute('data-theme');
+  const next=current==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('theme',next);
+  document.querySelector('.theme-toggle').textContent=next==='light'?'&#9790;':'&#9788;';
+}
+
+// 初始化主题
+(function(){
+  const saved=localStorage.getItem('theme')||'dark';
+  document.documentElement.setAttribute('data-theme',saved);
+  setTimeout(()=>{
+    const btn=document.querySelector('.theme-toggle');
+    if(btn) btn.textContent=saved==='light'?'&#9790;':'&#9788;';
+  },100);
+})();
+
+// ─── 请求详情弹窗 ─────────────────────────────────────────────────
+async function showDetail(id){
+  try{
+    const r=await fetch('/api/request/'+id);
+    const d=await r.json();
+    const content=document.getElementById('detail-content');
+    
+    const fields=[
+      {label:'ID',val:d.id},{label:'Request ID',val:d.request_id},
+      {label:t('thModel'),val:d.model},{label:t('thProvider'),val:d.provider},
+      {label:t('thStatus'),val:d.status},{label:t('thStream'),val:d.stream?'Yes':'No'},
+      {label:t('thSource'),val:d.source},{label:t('thClientIp'),val:d.client_ip},
+      {label:t('thChannel'),val:d.channel},{label:'API Key',val:d.api_key},
+      {label:t('input')+' Tokens',val:fmt(d.input_tokens)},{label:t('output')+' Tokens',val:fmt(d.output_tokens)},
+      {label:t('total')+' Tokens',val:fmt(d.total_tokens)},{label:t('thCacheRead'),val:fmt(d.cache_read)},
+      {label:t('thCost'),val:d.cost?'$'+d.cost.toFixed(6):'-'},{label:t('thLatency'),val:d.latency_ms?d.latency_ms+'ms':'-'},
+      {label:'TTFT',val:d.ttft_ms?d.ttft_ms+'ms':'-'},{label:t('thTime'),val:d.ts}
+    ];
+    
+    content.innerHTML=`
+      <div class="detail-grid">
+        ${fields.map(f=>`<div class="detail-item"><div class="label">${f.label}</div><div class="val">${f.val||'-'}</div></div>`).join('')}
+      </div>
+      <div class="detail-actions">
+        <button class="icon-btn" onclick="copyCurl(${d.id})">${t('copyCurl')}</button>
+      </div>
+    `;
+    document.getElementById('detail-modal').classList.add('show');
+  }catch(e){console.error('showDetail:',e);}
+}
+
+function closeDetailModal(){
+  document.getElementById('detail-modal').classList.remove('show');
+}
+
+async function copyCurl(id){
+  try{
+    const r=await fetch('/api/request/'+id);
+    const d=await r.json();
+    const provider=d.provider||'MiMo';
+    const model=d.model||'';
+    const curl=`curl -X POST https://your-api-endpoint/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{"model":"${model}","messages":[{"role":"user","content":"test"}],"stream":false}'`;
+    await navigator.clipboard.writeText(curl);
+    alert(t('copied'));
+  }catch(e){console.error('copyCurl:',e);}
+}
+
+// ─── 热力图（按月导航，日历平铺）─────────────────────────────────
+let heatmapOffset = 0;
+
+function shiftHeatmap(dir){
+  heatmapOffset += dir;
+  loadHeatmap();
+}
+
+async function loadHeatmap(){
+  const now = new Date();
+  now.setMonth(now.getMonth() + heatmapOffset);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  
+  const monthNames = lang==='zh'?['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('heatmap-range-label').textContent = `${year}年 ${monthNames[month]}`;
+  
+  // 向后取1个月 + 当月 + 前1个月的数据
+  const monthsAgo = Math.abs(Math.min(0, heatmapOffset)) + 2;
+  try{
+    const r = await fetch('/api/heatmap?months=' + monthsAgo);
+    const d = await r.json();
+    renderHeatmap(year, month, d.data);
+  }catch(e){console.error('loadHeatmap:',e);}
+}
+
+function renderHeatmap(year, month, data){
+  const container = document.getElementById('heatmap-container');
+  const dayMap = {};
+  data.forEach(d => dayMap[d.date] = d.cnt);
+  
+  const weekDays = lang==='zh'?['一','二','三','四','五','六','日']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const monthNames = lang==='zh'?['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDow = (firstDay.getDay() + 6) % 7;
+  const totalDays = lastDay.getDate();
+  
+  let html = `<div class="heatmap-month-card">
+    <div class="heatmap-month-title">${year}年 ${monthNames[month]}</div>
+    <div class="heatmap-month-days">`;
+  
+  for (let w = 0; w < 7; w++) html += `<div class="heatmap-weekday">${weekDays[w]}</div>`;
+  for (let w = 0; w < startDow; w++) html += `<div class="heatmap-cell" style="background:transparent"></div>`;
+  
+  for (let day = 1; day <= totalDays; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const cnt = dayMap[dateStr] || 0;
+    const level = cnt === 0 ? '' : cnt < 5 ? 'l1' : cnt < 20 ? 'l2' : cnt < 50 ? 'l3' : 'l4';
+    html += `<div class="heatmap-cell ${level}" title="${dateStr}: ${cnt} ${lang==='zh'?'次请求':'requests'}">${day}</div>`;
+  }
+  
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+// ─── 数据清理 ──────────────────────────────────────────────────────
+async function loadDataStats(){
+  try{
+    const r=await fetch('/api/data-stats');
+    const d=await r.json();
+    const el=document.getElementById('cleanup-stats');
+    const byProvider=d.byProvider.map(p=>`${p.provider}: ${p.cnt}`).join(', ');
+    el.innerHTML=`${lang==='zh'?'总记录':'Total'}: ${d.total} | ${lang==='zh'?'最早':'Oldest'}: ${d.oldest||'-'} | ${lang==='zh'?'最新':'Newest'}: ${d.newest||'-'}<br>${byProvider}`;
+  }catch(e){console.error('loadDataStats:',e);}
+}
+
+async function doCleanup(){
+  const days=parseInt(document.getElementById('cleanup-days').value)||90;
+  if(!confirm(t('confirmClean').replace('{n}',days))) return;
+  try{
+    const r=await fetch('/api/cleanup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days})});
+    const d=await r.json();
+    if(d.ok){
+      alert(`${lang==='zh'?'清理完成':'Cleanup complete'}: ${lang==='zh'?'删除':'Deleted'} ${d.deleted_requests} ${lang==='zh'?'条请求':'requests'}, ${d.deleted_alerts} ${lang==='zh'?'条告警':'alerts'}`);
+      loadDataStats();
+      load();
+    }
+  }catch(e){console.error('doCleanup:',e);}
+}
+
+// ─── 浏览器通知 ───────────────────────────────────────────────────
+function requestNotificationPermission(){
+  if('Notification' in window&&Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
+function sendBrowserNotification(title,body){
+  if('Notification' in window&&Notification.permission==='granted'){
+    new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>'});
+  }
+}
+
+// 页面加载时请求通知权限
+requestNotificationPermission();
+
 // ─── Provider 对比图表 ─────────────────────────────────────────────
-const PROVIDER_COLORS={MiMo:'#3b82f6',MiniMax:'#a855f7',Claude:'#06b6d4',Alibaba:'#ff6a00'};
+const PROVIDER_COLORS={MiMo:'#3b82f6',MiniMax:'#a855f7',Alibaba:'#ff6a00'};
 let compareData=null;
 let compareRange='today';
 let compareMetric='tokens';
@@ -1049,7 +1557,7 @@ function renderCompareChart(){
 }
 
 function renderBarChart(body){
-  const ps=compareData.providerSummary||[];
+  const ps=(compareData.providerSummary||[]).filter(p=>getMetricVal(p)>0);
   if(!ps.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
   const maxVal=Math.max(...ps.map(p=>getMetricVal(p)),1);
 
@@ -1083,10 +1591,9 @@ function renderBarChart(body){
 }
 
 function renderPieChart(body){
-  const ms=compareData.modelSummary||[];
+  const ms=(compareData.modelSummary||[]).filter(m=>getMetricVal(m)>0);
   if(!ms.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
   const total=ms.reduce((a,m)=>a+getMetricVal(m),0);
-  if(total===0){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
 
   const sorted=[...ms].sort((a,b)=>getMetricVal(b)-getMetricVal(a));
   const colors=['#3b82f6','#a855f7','#06b6d4','#22c55e','#eab308','#ef4444','#f97316','#ec4899'];
@@ -1135,18 +1642,20 @@ function renderPieChart(body){
 
 function renderLineChart(body){
   const trends=compareData.trends||[];
-  const providers=compareData.providerSummary||[];
+  const providers=(compareData.providerSummary||[]).filter(p=>getMetricVal(p)>0);
   if(!trends.length||!providers.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
 
   const provNames=providers.map(p=>p.provider);
   const allVals=[];
-  trends.forEach(t=>{provNames.forEach(n=>{const d=t.data[n];allVals.push(d?getMetricVal(d):0);});});
+  const filteredTrends=trends.filter(t=>provNames.some(n=>{const d=t.data[n];return d&&getMetricVal(d)>0;}));
+  if(!filteredTrends.length){body.innerHTML='<div class="empty">'+t('noReqs')+'</div>';return;}
+  filteredTrends.forEach(t=>{provNames.forEach(n=>{const d=t.data[n];allVals.push(d?getMetricVal(d):0);});});
   const maxVal=Math.max(...allVals,1);
 
   const W=700,H=240,padL=50,padR=20,padT=20,padB=30;
   const chartW=W-padL-padR;
   const chartH=H-padT-padB;
-  const stepX=trends.length>1?chartW/(trends.length-1):chartW;
+  const stepX=filteredTrends.length>1?chartW/(filteredTrends.length-1):chartW;
 
   // Grid lines
   let gridLines='';
@@ -1159,9 +1668,9 @@ function renderLineChart(body){
 
   // X labels
   let xLabels='';
-  const labelStep=Math.max(1,Math.floor(trends.length/8));
-  trends.forEach((t,i)=>{
-    if(i%labelStep===0||i===trends.length-1){
+  const labelStep=Math.max(1,Math.floor(filteredTrends.length/8));
+  filteredTrends.forEach((t,i)=>{
+    if(i%labelStep===0||i===filteredTrends.length-1){
       const x=padL+i*stepX;
       xLabels+=`<text x="${x}" y="${H-4}" fill="#71717a" font-size="10" text-anchor="middle">${t.period}</text>`;
     }
@@ -1173,7 +1682,7 @@ function renderLineChart(body){
   provNames.forEach((name,pi)=>{
     const color=PROVIDER_COLORS[name]||'#666';
     let points=[];
-    trends.forEach((t,i)=>{
+    filteredTrends.forEach((t,i)=>{
       const d=t.data[name];
       const val=d?getMetricVal(d):0;
       const x=padL+i*stepX;
@@ -1311,13 +1820,31 @@ function checkTableScroll() {
 
 // 监听窗口大小变化
 window.addEventListener('resize', checkTableScroll);
-// 初始检查
-setTimeout(checkTableScroll, 100);
-setInterval(load,2000);
-setInterval(loadBudget,10000);
-setInterval(loadCompare,5000);
-setInterval(checkNewAlerts,5000);
-checkNewAlerts();
+
+// 键盘快捷键
+document.addEventListener('keydown',(e)=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName=='TEXTAREA')return;
+  if(e.key==='r'||e.key==='R'){load();loadCompare();loadBudget();}
+  if(e.key==='e'||e.key==='E'){exportCSV();}
+  if(e.key==='/'){e.preventDefault();document.getElementById('filter-search').focus();}
+  if(e.key==='Escape'){closeDetailModal();closeAlert();}
+});
+
+// 初始加载
+checkTableScroll();
+load();
+loadBudget();
+loadCompare();
+loadModelPerf();
+loadHeatmap();
+loadDataStats();
+loadAlertConfig();
+
+// 定时刷新 (降低频率节省资源)
+setInterval(()=>{if(!document.getElementById('filter-search').value)load();},10000);
+setInterval(loadBudget,30000);
+setInterval(loadCompare,30000);
+setInterval(checkNewAlerts,10000);
 
 async function loadAlertConfig(){
   try{
